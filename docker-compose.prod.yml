@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  kpi-nexus-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production 
