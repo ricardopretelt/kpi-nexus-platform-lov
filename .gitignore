@@ -38,6 +38,6 @@ coverage/
 *.temp
 
 # Lock files (uncomment if you don't want to commit lock files)
-#package-lock.json
-#yarn.lock
-#pnpm-lock.yaml
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
