@@ -3,7 +3,7 @@ services:
   - type: web
     name: kpi-nexus-backend
     env: node
-    buildCommand: cd backend && npm install && npm run init-db
+    buildCommand: cd backend && npm install
     startCommand: cd backend && node server.js
     envVars:
       - key: NODE_ENV
@@ -28,8 +28,6 @@ services:
         fromDatabase:
           name: kpi-nexus-db
           property: port
-      - key: PORT
-        value: 10000
 
   # Frontend Service
   - type: web
@@ -41,12 +39,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: VITE_API_URL
-        value: https://kpi-nexus-backend.onrender.com
-      - key: PORT
-        value: 10000
+        value: https://kpi-nexus-backend.onrender.com  # Replace with your actual backend URL
 
 databases:
   - name: kpi-nexus-db
     databaseName: kpi_nexus
     user: kpi_user
-    plan: free

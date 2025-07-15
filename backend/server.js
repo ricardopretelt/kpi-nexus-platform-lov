@@ -6,49 +6,17 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Enhanced CORS configuration for production
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://kpi-nexus-platform.onrender.com', 'http://localhost:3000']
-    : 'http://localhost:3000',
-  credentials: true
-}));
-
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-// Database connection with better error handling
+// Database connection
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'kpi_nexus',
   password: process.env.DB_PASSWORD || 'password',
   port: process.env.DB_PORT || 5432,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
-// Test database connection
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
-
-// Health check endpoint
-app.get('/api/health', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    res.json({ 
-      status: 'healthy', 
-      timestamp: result.rows[0].now,
-      database: 'connected'
-    });
-  } catch (err) {
-    console.error('Health check failed:', err);
-    res.status(500).json({ 
-      status: 'unhealthy', 
-      error: err.message,
-      database: 'disconnected'
-    });
-  }
 });
 
 // GET Routes (existing)
