@@ -1,4 +1,18 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Runtime configuration that works in both development and production
+const API_BASE_URL = (() => {
+  // Check for runtime config first (for production)
+  if (window.APP_CONFIG?.API_BASE_URL) {
+    return window.APP_CONFIG.API_BASE_URL;
+  }
+  // Check environment variable (for development)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Fallback to localhost
+  return 'http://localhost:3001';
+})();
+
+console.log('API_BASE_URL:', API_BASE_URL);
 
 export interface KPI {
   id: string;
