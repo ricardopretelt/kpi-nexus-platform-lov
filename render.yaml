@@ -35,7 +35,7 @@ services:
   - type: web
     name: kpi-nexus-platform
     env: node
-    buildCommand: VITE_API_URL=https://kpi-nexus-backend.onrender.com npm ci && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
