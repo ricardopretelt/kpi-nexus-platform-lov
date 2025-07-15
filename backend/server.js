@@ -19,7 +19,7 @@ console.log('Starting server with config:', {
 // Enhanced CORS configuration for production
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://kpi-nexus-platform.onrender.com', 'http://localhost:3000']
+    ? ['https://kpi-nexus-platform-lov.onrender.com', 'http://localhost:3000']
     : 'http://localhost:3000',
   credentials: true
 }));
