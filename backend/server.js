@@ -8,7 +8,6 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-console.log('=== SERVER STARTING ===');
 console.log('Starting server with config:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
@@ -46,7 +45,6 @@ pool.on('error', (err) => {
 // Initialize database with schema
 async function initializeDatabase() {
   try {
-    console.log('=== DATABASE INITIALIZATION ===');
     console.log('Checking if database needs initialization...');
     console.log('Database config:', {
       host: process.env.DB_HOST,
@@ -89,7 +87,6 @@ initializeDatabase();
 
 // Root endpoint for testing
 app.get('/', (req, res) => {
-  console.log('Root endpoint hit');
   res.json({ 
     message: 'KPI Nexus Backend API',
     status: 'running',
@@ -99,7 +96,6 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
-  console.log('Health check endpoint hit');
   try {
     const result = await pool.query('SELECT NOW()');
     res.json({ 
@@ -108,12 +104,7 @@ app.get('/api/health', async (req, res) => {
       database: 'connected'
     });
   } catch (err) {
-    console.error('Health check failed:', err);
-    res.status(500).json({ 
-      status: 'unhealthy', 
-      error: err.message,
-      database: 'disconnected'
-    });
+    res.status(500).json({ status: 'unhealthy', error: err.message });
   }
 });
 
@@ -305,9 +296,7 @@ app.use((req, res) => {
 });
 
 app.listen(port, () => {
-  console.log('=== SERVER STARTED ===');
   console.log(`Server running on port ${port}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Database: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
-  console.log('=== READY TO ACCEPT REQUESTS ===');
 });
