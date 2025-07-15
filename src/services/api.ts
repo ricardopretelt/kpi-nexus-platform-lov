@@ -1,14 +1,14 @@
-// More robust API URL detection
+// Runtime configuration that works in both development and production
 const API_BASE_URL = (() => {
-  // Check if we're in production (on Render)
-  if (window.location.hostname.includes('onrender.com')) {
-    return 'https://kpi-nexus-backend.onrender.com';
+  // Check for runtime config first (for production)
+  if (window.APP_CONFIG?.API_BASE_URL) {
+    return window.APP_CONFIG.API_BASE_URL;
   }
-  // Check environment variable
+  // Check environment variable (for development)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // Fallback to localhost for development
+  // Fallback to localhost
   return 'http://localhost:3001';
 })();
 
