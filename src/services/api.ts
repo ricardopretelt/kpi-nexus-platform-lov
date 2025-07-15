@@ -35,31 +35,19 @@ export interface Topic {
 export const api = {
   // GET operations
   async getKPIs(): Promise<KPI[]> {
-    console.log('Fetching KPIs from:', `${API_BASE_URL}/api/kpis`);
     const response = await fetch(`${API_BASE_URL}/api/kpis`);
-    console.log('KPI response status:', response.status);
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('KPI fetch error:', errorText);
-      throw new Error(`Failed to fetch KPIs: ${response.status} ${errorText}`);
+      throw new Error('Failed to fetch KPIs');
     }
-    const data = await response.json();
-    console.log('KPI data received:', data);
-    return data;
+    return response.json();
   },
 
   async getTopics(): Promise<Topic[]> {
-    console.log('Fetching topics from:', `${API_BASE_URL}/api/topics`);
     const response = await fetch(`${API_BASE_URL}/api/topics`);
-    console.log('Topics response status:', response.status);
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Topics fetch error:', errorText);
-      throw new Error(`Failed to fetch topics: ${response.status} ${errorText}`);
+      throw new Error('Failed to fetch topics');
     }
-    const data = await response.json();
-    console.log('Topics data received:', data);
-    return data;
+    return response.json();
   },
 
   async getUsers() {
