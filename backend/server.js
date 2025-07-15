@@ -104,12 +104,7 @@ app.get('/api/health', async (req, res) => {
       database: 'connected'
     });
   } catch (err) {
-    console.error('Health check failed:', err);
-    res.status(500).json({ 
-      status: 'unhealthy', 
-      error: err.message,
-      database: 'disconnected'
-    });
+    res.status(500).json({ status: 'unhealthy', error: err.message });
   }
 });
 
