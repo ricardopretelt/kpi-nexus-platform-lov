@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -31,6 +33,43 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });
+
+// Initialize database with schema
+async function initializeDatabase() {
+  try {
+    console.log('Checking if database needs initialization...');
+    
+    // Check if tables exist
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
+      );
+    `);
+    
+    if (!tableCheck.rows[0].exists) {
+      console.log('Initializing database with schema...');
+      
+      // Read the schema file
+      const schemaPath = path.join(__dirname, '../database/schema.sql');
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      
+      // Execute the schema
+      await pool.query(schema);
+      
+      console.log('Database initialized successfully!');
+    } else {
+      console.log('Database already initialized.');
+    }
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    // Don't exit, just log the error
+  }
+}
+
+// Initialize database on startup
+initializeDatabase();
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
