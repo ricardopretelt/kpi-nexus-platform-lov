@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://3.144.175.167:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://3.19.28.177:3001';
 
 export interface KPI {
   id: string;
