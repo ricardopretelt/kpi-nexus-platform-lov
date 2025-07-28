@@ -6,6 +6,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Import authentication routes
+const { router: authRouter, authenticateToken } = require('./auth');
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -19,8 +22,11 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
 });
 
-// GET Routes (existing)
-app.get('/api/kpis', async (req, res) => {
+// Authentication routes
+app.use('/api/auth', authRouter);
+
+// GET Routes (existing) - now protected with authentication
+app.get('/api/kpis', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -62,7 +68,7 @@ app.get('/api/kpis', async (req, res) => {
   }
 });
 
-app.get('/api/topics', async (req, res) => {
+app.get('/api/topics', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM topics ORDER BY name');
     res.json(result.rows);
@@ -72,7 +78,7 @@ app.get('/api/topics', async (req, res) => {
   }
 });
 
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, username, email, full_name, role FROM users ORDER BY full_name');
     res.json(result.rows);
@@ -82,8 +88,8 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// POST Routes (new - for creating data)
-app.post('/api/kpis', async (req, res) => {
+// POST Routes (new - for creating data) - now protected
+app.post('/api/kpis', authenticateToken, async (req, res) => {
   try {
     const { name, definition, sqlQuery, topic, dataSpecialist, businessSpecialist, dashboardPreview, status } = req.body;
     
@@ -120,7 +126,7 @@ app.post('/api/kpis', async (req, res) => {
   }
 });
 
-app.post('/api/topics', async (req, res) => {
+app.post('/api/topics', authenticateToken, async (req, res) => {
   try {
     const { name, description, icon, color } = req.body;
     
@@ -137,8 +143,8 @@ app.post('/api/topics', async (req, res) => {
   }
 });
 
-// PUT Routes (new - for updating data)
-app.put('/api/kpis/:id', async (req, res) => {
+// PUT Routes (new - for updating data) - now protected
+app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, definition, sqlQuery, topic, dataSpecialist, businessSpecialist, dashboardPreview, status } = req.body;
@@ -181,8 +187,8 @@ app.put('/api/kpis/:id', async (req, res) => {
   }
 });
 
-// DELETE Routes (new - for deleting data)
-app.delete('/api/kpis/:id', async (req, res) => {
+// DELETE Routes (new - for deleting data) - now protected
+app.delete('/api/kpis/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
