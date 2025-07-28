@@ -13,7 +13,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +21,9 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const success = await login(email, password);
-      if (!success) {
-        setError('Invalid email or password');
+      const result = await signIn(email, password);
+      if (result.error) {
+        setError(result.error);
       }
     } catch (err) {
       setError('Login failed. Please try again.');
@@ -34,8 +34,8 @@ const LoginPage = () => {
 
   const demoAccounts = [
     { email: 'admin@telecom.com', role: 'Admin', description: 'Full platform access' },
-    { email: 'john.doe@telecom.com', role: 'Data Specialist', description: 'Technical & KPI documentation access' },
-    { email: 'jane.smith@telecom.com', role: 'Business Specialist', description: 'Business KPI documentation access' }
+    { email: 'john.doe@company.com', role: 'Data Specialist', description: 'Technical & KPI documentation access' },
+    { email: 'jane.smith@company.com', role: 'Business Specialist', description: 'Business KPI documentation access' }
   ];
 
   return (
