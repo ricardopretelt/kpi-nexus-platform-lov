@@ -64,5 +64,9 @@ INSERT INTO profiles (id, full_name, email, role, status) VALUES
 ('550e8400-e29b-41d4-a716-446655440000', 'Admin User', 'admin@telecom.com', 'admin', 'active')
 ON CONFLICT (email) DO NOTHING;
 
+INSERT INTO users (username, email, password_hash, full_name, role) VALUES
+('admin', 'admin@telecom.com', '$2b$10$hashed_password', 'Admin User', 'admin')
+ON CONFLICT (email) DO NOTHING;
+
 -- Update existing users to reference the new profile
 UPDATE users SET profile_id = '550e8400-e29b-41d4-a716-446655440000' WHERE email = 'john.doe@company.com';
