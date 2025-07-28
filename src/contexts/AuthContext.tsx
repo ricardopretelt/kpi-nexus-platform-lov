@@ -25,7 +25,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://3.16.147.136:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -64,6 +64,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signIn = async (email: string, password: string) => {
+    try {
+      console.log('Attempting login to:', `${API_BASE_URL}/api/auth/login`);
+      console.log('Login data:', { email, password });
+      
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (!response.ok) {
+        return { error: data.error || 'Login failed' };
+      }
+
+      // Store token and user data
+      localStorage.setItem('authToken', data.token);
+      setUser(data.user);
+
+      return { error: null };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { error: 'Network error' };
+    }
+  };
+
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
@@ -79,32 +111,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!response.ok) {
         return { error: data.error || 'Registration failed' };
       }
-
-      return { error: null };
-    } catch (error) {
-      return { error: 'Network error' };
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { error: data.error || 'Login failed' };
-      }
-
-      // Store token and user data
-      localStorage.setItem('authToken', data.token);
-      setUser(data.user);
 
       return { error: null };
     } catch (error) {
@@ -149,7 +155,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: data.error || 'Password update failed' };
       }
 
-      // Update user profile to remove force password change flag
       if (user) {
         setUser({ ...user, forcePasswordChange: false });
       }
