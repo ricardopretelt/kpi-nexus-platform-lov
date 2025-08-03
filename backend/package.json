@@ -4,7 +4,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "debug-login": "node debug-login.js",
+    "debug-bcrypt": "node debug-bcrypt.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
