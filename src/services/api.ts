@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://3.16.147.136:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://18.223.169.214:3001';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
