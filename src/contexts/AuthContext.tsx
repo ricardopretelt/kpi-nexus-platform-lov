@@ -19,23 +19,27 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   clearError: () => void;
+  initialized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://18.223.169.214:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://18.223.169.214:3001/api';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   // Check for existing token on app load
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (token) {
       fetchProfile(token);
+    } else {
+      setInitialized(true);
     }
   }, []);
 
@@ -60,6 +64,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Profile fetch error:', err);
       localStorage.removeItem('authToken');
       setUser(null);
+    } finally {
+      setInitialized(true);
     }
   };
 
@@ -190,6 +196,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
   };
 
+  // Show loading while initializing
+  if (!initialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -200,7 +218,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       inviteUser, 
       loading, 
       error, 
-      clearError 
+      clearError,
+      initialized
     }}>
       {children}
     </AuthContext.Provider>
