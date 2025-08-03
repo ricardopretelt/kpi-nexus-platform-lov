@@ -51,10 +51,10 @@ CREATE TABLE kpi_versions (
 -- Insert initial data with properly hashed passwords
 -- Password for all users: "password123"
 INSERT INTO users (username, email, password_hash, full_name, role) VALUES
-('john.doe', 'john.doe@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK2', 'John Doe', 'data_specialist'),
-('jane.smith', 'jane.smith@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK2', 'Jane Smith', 'business_specialist'),
-('emily.clark', 'emily.clark@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK2', 'Emily Clark', 'data_specialist'),
-('tom.brown', 'tom.brown@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK2', 'Tom Brown', 'business_specialist');
+('john.doe', 'john.doe@company.com', '$2b$12$uUXx0mKpXGht3j4ohssv2O.GdpKn9vaZomdA/bHrGITqdss9JVAAe', 'John Doe', 'data_specialist'),
+('jane.smith', 'jane.smith@company.com', '$2b$12$uUXx0mKpXGht3j4ohssv2O.GdpKn9vaZomdA/bHrGITqdss9JVAAe', 'Jane Smith', 'business_specialist'),
+('emily.clark', 'emily.clark@company.com', '$2b$12$uUXx0mKpXGht3j4ohssv2O.GdpKn9vaZomdA/bHrGITqdss9JVAAe', 'Emily Clark', 'data_specialist'),
+('tom.brown', 'tom.brown@company.com', '$2b$12$uUXx0mKpXGht3j4ohssv2O.GdpKn9vaZomdA/bHrGITqdss9JVAAe', 'Tom Brown', 'business_specialist');
 
 INSERT INTO topics (name, description, icon, color) VALUES
 ('Customer Retention', 'KPIs related to customer loyalty, churn, and acquisition', '', 'bg-blue-500'),
