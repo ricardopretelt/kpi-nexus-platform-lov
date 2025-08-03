@@ -13,6 +13,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 app.use(cors());
 app.use(express.json());
 
+// Add this debugging middleware after the existing middleware
+app.use((req, res, next) => {
+  if (req.path === '/api/auth/login') {
+    console.log('=== LOGIN REQUEST ===');
+    console.log('Body:', req.body);
+  }
+  next();
+});
+
 // Database connection
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
@@ -105,9 +114,13 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    console.log('Login attempt for:', email);
+    console.log('Password provided:', password ? 'YES' : 'NO');
 
     // Validate input
     if (!email || !password) {
+      console.log('❌ Missing email or password');
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
@@ -117,18 +130,27 @@ app.post('/api/auth/login', async (req, res) => {
       [email]
     );
 
+    console.log('Database query result:', result.rows.length, 'users found');
+
     if (result.rows.length === 0) {
+      console.log('❌ User not found in database');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const user = result.rows[0];
+    console.log('✅ User found:', user.email);
+    console.log('Stored hash:', user.password_hash);
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    console.log('Password verification result:', isValidPassword);
 
     if (!isValidPassword) {
+      console.log('❌ Password verification failed');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    console.log('✅ Password verified successfully');
 
     // Generate JWT token
     const token = jwt.sign(
@@ -136,6 +158,8 @@ app.post('/api/auth/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
+
+    console.log('✅ JWT token generated');
 
     res.json({
       message: 'Login successful',
@@ -149,7 +173,7 @@ app.post('/api/auth/login', async (req, res) => {
       token
     });
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('❌ Login error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
