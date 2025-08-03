@@ -25,6 +25,7 @@ services:
       - DB_PASSWORD=password
       - DB_NAME=kpi_nexus
       - DB_PORT=5432
+      - JWT_SECRET=your-secret-key-change-in-production
     depends_on:
       - postgres
     networks:
@@ -42,7 +43,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://18.223.169.214:3001
+      - VITE_API_URL=http://backend:3001/api
     depends_on:
       - backend
     networks:
