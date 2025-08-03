@@ -53,7 +53,8 @@ INSERT INTO users (username, email, password_hash, full_name, role) VALUES
 ('john.doe', 'john.doe@company.com', '$2b$10$hashed_password', 'John Doe', 'data_specialist'),
 ('jane.smith', 'jane.smith@company.com', '$2b$10$hashed_password', 'Jane Smith', 'business_specialist'),
 ('emily.clark', 'emily.clark@company.com', '$2b$10$hashed_password', 'Emily Clark', 'data_specialist'),
-('tom.brown', 'tom.brown@company.com', '$2b$10$hashed_password', 'Tom Brown', 'business_specialist');
+('tom.brown', 'tom.brown@company.com', '$2b$10$hashed_password', 'Tom Brown', 'business_specialist'),
+('admin', 'admin@telecom.com', '$2b$10$hashed_password', 'Admin User', 'admin');
 
 INSERT INTO topics (name, description, icon, color) VALUES
 ('Customer Retention', 'KPIs related to customer loyalty, churn, and acquisition', '��', 'bg-blue-500'),
