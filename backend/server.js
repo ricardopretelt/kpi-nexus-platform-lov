@@ -9,8 +9,21 @@ const app = express();
 const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// Middleware
-app.use(cors());
+// Enhanced CORS configuration
+app.use(cors({
+  origin: [
+    'http://localhost:8080',
+    'http://localhost:3000', 
+    'http://localhost:5173',
+    'http://frontend:8080',
+    'http://18.223.169.214:8080',
+    'http://18.223.169.214:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // Add this debugging middleware after the existing middleware
