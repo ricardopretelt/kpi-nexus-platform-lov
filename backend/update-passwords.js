@@ -1,17 +1,18 @@
 const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
-require('dotenv').config();
 
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'kpi_nexus',
-  password: process.env.DB_PASSWORD || 'password',
-  port: process.env.DB_PORT || 5432,
+  user: 'postgres',
+  host: 'postgres',
+  database: 'kpi_nexus',
+  password: 'password',
+  port: 5432,
 });
 
 async function updatePasswords() {
   try {
+    console.log('Generating proper bcrypt hash for password123...');
+    
     const password = 'password123';
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
@@ -30,14 +31,21 @@ async function updatePasswords() {
       ]
     );
     
-    console.log('Updated', result.rowCount, 'users');
+    console.log(`Updated ${result.rowCount} users`);
+    
+    // Verify the update
+    const users = await pool.query('SELECT email, password_hash FROM users');
+    console.log('\nUpdated users:');
+    users.rows.forEach(user => {
+      console.log(`${user.email}: ${user.password_hash.substring(0, 30)}...`);
+    });
     
     // Test the hash
     const testResult = await bcrypt.compare(password, hashedPassword);
-    console.log('Hash verification test:', testResult);
+    console.log('\nHash verification test:', testResult ? '✅ PASS' : '❌ FAIL');
     
   } catch (error) {
-    console.error('Error updating passwords:', error);
+    console.error('Error:', error);
   } finally {
     await pool.end();
   }
