@@ -1,62 +1,207 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export interface User {
   id: string;
-  name: string;
+  username: string;
   email: string;
-  role: 'admin' | 'data_specialist' | 'business_specialist';
+  fullName: string;
+  role: 'admin' | 'data_specialist' | 'business_specialist' | 'user';
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  register: (username: string, email: string, password: string, fullName: string, role?: User['role']) => Promise<boolean>;
   users: User[];
   inviteUser: (email: string, name: string, role: User['role']) => void;
+  loading: boolean;
+  error: string | null;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const mockUsers: User[] = [
-  { id: '1', name: 'Admin User', email: 'admin@telecom.com', role: 'admin' },
-  { id: '2', name: 'John Doe', email: 'john.doe@telecom.com', role: 'data_specialist' },
-  { id: '3', name: 'Jane Smith', email: 'jane.smith@telecom.com', role: 'business_specialist' },
-  { id: '4', name: 'Emily Clark', email: 'emily.clark@telecom.com', role: 'data_specialist' },
-  { id: '5', name: 'Tom Brown', email: 'tom.brown@telecom.com', role: 'business_specialist' },
-];
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://18.223.169.214:3001/api';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Check for existing token on app load
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      fetchProfile(token);
+    }
+  }, []);
+
+  const fetchProfile = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      } else {
+        // Token is invalid, remove it
+        localStorage.removeItem('authToken');
+        setUser(null);
+      }
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+      localStorage.removeItem('authToken');
+      setUser(null);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    console.log('Login attempt:', email, password);
-    const foundUser = users.find(u => u.email === email);
-    if (foundUser && password === 'password123') {
-      setUser(foundUser);
-      return true;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUser(data.user);
+        localStorage.setItem('authToken', data.token);
+        return true;
+      } else {
+        setError(data.error || 'Login failed');
+        return false;
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Network error. Please try again.');
+      return false;
+    } finally {
+      setLoading(false);
     }
-    return false;
   };
 
-  const logout = () => {
+  const register = async (username: string, email: string, password: string, fullName: string, role: User['role'] = 'user'): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, email, password, fullName, role }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUser(data.user);
+        localStorage.setItem('authToken', data.token);
+        return true;
+      } else {
+        setError(data.error || 'Registration failed');
+        return false;
+      }
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError('Network error. Please try again.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    const token = localStorage.getItem('authToken');
+    
+    if (token) {
+      try {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+    }
+
     setUser(null);
+    localStorage.removeItem('authToken');
   };
 
-  const inviteUser = (email: string, name: string, role: User['role']) => {
-    const newUser: User = {
-      id: Date.now().toString(),
-      email,
-      name,
-      role
-    };
-    setUsers(prev => [...prev, newUser]);
-    console.log('User invited:', newUser);
+  const inviteUser = async (email: string, name: string, role: User['role']) => {
+    const token = localStorage.getItem('authToken');
+    
+    if (!token) {
+      setError('You must be logged in to invite users');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          username: email.split('@')[0], 
+          email, 
+          password: 'tempPassword123', 
+          fullName: name, 
+          role 
+        }),
+      });
+
+      if (response.ok) {
+        const newUser = await response.json();
+        setUsers(prev => [...prev, newUser.user]);
+        console.log('User invited:', newUser.user);
+      } else {
+        const error = await response.json();
+        setError(error.error || 'Failed to invite user');
+      }
+    } catch (err) {
+      console.error('Invite user error:', err);
+      setError('Network error. Please try again.');
+    }
+  };
+
+  const clearError = () => {
+    setError(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, users, inviteUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      register, 
+      users, 
+      inviteUser, 
+      loading, 
+      error, 
+      clearError 
+    }}>
       {children}
     </AuthContext.Provider>
   );
