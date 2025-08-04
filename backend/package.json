@@ -5,9 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "debug-login": "node debug-login.js",
-    "debug-bcrypt": "node debug-bcrypt.js",
-    "consistent-hash": "node consistent-hash.js"
+    "consistent-hash": "node consistent-hash.js",
+    "test-login": "node test-login-new-hash.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
