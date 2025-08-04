@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { hashPassword, verifyPassword } = require('./consistent-hash');
 require('dotenv').config();
 
 const app = express();
@@ -26,10 +26,16 @@ app.use(cors({
 
 app.use(express.json());
 
-// Add this debugging middleware after the existing middleware
+// Enhanced debugging middleware
 app.use((req, res, next) => {
+  console.log(`=== REQUEST ===`);
+  console.log(`Method: ${req.method}`);
+  console.log(`URL: ${req.url}`);
+  console.log(`Origin: ${req.headers.origin}`);
+  
   if (req.path === '/api/auth/login') {
     console.log('=== LOGIN REQUEST ===');
+    console.log('Headers:', req.headers);
     console.log('Body:', req.body);
   }
   next();
@@ -86,9 +92,8 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Hash password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Hash password using consistent hash
+    const hashedPassword = hashPassword(password);
 
     // Insert new user
     const result = await pool.query(
@@ -154,8 +159,8 @@ app.post('/api/auth/login', async (req, res) => {
     console.log('✅ User found:', user.email);
     console.log('Stored hash:', user.password_hash);
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    // Verify password using consistent hash
+    const isValidPassword = verifyPassword(password, user.password_hash);
     console.log('Password verification result:', isValidPassword);
 
     if (!isValidPassword) {
@@ -248,15 +253,14 @@ app.put('/api/auth/password', authenticateToken, async (req, res) => {
     }
 
     // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+    const isValidPassword = verifyPassword(currentPassword, userResult.rows[0].password_hash);
 
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
     // Hash new password
-    const saltRounds = 12;
-    const newHashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    const newHashedPassword = hashPassword(newPassword);
 
     // Update password
     await pool.query(
