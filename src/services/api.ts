@@ -3,10 +3,19 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://18.217.206.5:3001';
 // Helper function to get auth headers
 const getAuthHeaders = () => {
   const token = localStorage.getItem('authToken');
-  return {
+  console.log(' Debugging API call:');
+  console.log('  - API_BASE_URL:', API_BASE_URL);
+  console.log('  - Token exists:', !!token);
+  console.log('  - Token length:', token ? token.length : 0);
+  console.log('  - Token preview:', token ? token.substring(0, 20) + '...' : 'None');
+  
+  const headers = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` })
   };
+  
+  console.log('  - Final headers:', headers);
+  return headers;
 };
 
 export interface KPI {
@@ -44,23 +53,59 @@ export interface Topic {
 export const api = {
   // GET operations
   async getKPIs(): Promise<KPI[]> {
-    const response = await fetch(`${API_BASE_URL}/api/kpis`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch KPIs');
+    console.log('🚀 Fetching KPIs...');
+    const url = `${API_BASE_URL}/api/kpis`;
+    console.log('  - URL:', url);
+    
+    const headers = getAuthHeaders();
+    
+    try {
+      const response = await fetch(url, { headers });
+      
+      console.log('  - Response status:', response.status);
+      console.log('  - Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('  - Error response:', errorText);
+        throw new Error(`Failed to fetch KPIs: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('  - Success! KPIs count:', data.length);
+      return data;
+    } catch (error) {
+      console.error('  - Fetch error:', error);
+      throw error;
     }
-    return response.json();
   },
 
   async getTopics(): Promise<Topic[]> {
-    const response = await fetch(`${API_BASE_URL}/api/topics`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch topics');
+    console.log(' Fetching Topics...');
+    const url = `${API_BASE_URL}/api/topics`;
+    console.log('  - URL:', url);
+    
+    const headers = getAuthHeaders();
+    
+    try {
+      const response = await fetch(url, { headers });
+      
+      console.log('  - Response status:', response.status);
+      console.log('  - Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('  - Error response:', errorText);
+        throw new Error(`Failed to fetch topics: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('  - Success! Topics count:', data.length);
+      return data;
+    } catch (error) {
+      console.error('  - Fetch error:', error);
+      throw error;
     }
-    return response.json();
   },
 
   async getUsers() {
