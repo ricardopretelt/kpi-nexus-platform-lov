@@ -32,12 +32,6 @@ const LoginPage = () => {
     }
   };
 
-  const demoAccounts = [
-    { email: 'admin@telecom.com', role: 'Admin', description: 'Full platform access' },
-    { email: 'john.doe@telecom.com', role: 'Data Specialist', description: 'Technical & KPI documentation access' },
-    { email: 'jane.smith@telecom.com', role: 'Business Specialist', description: 'Business KPI documentation access' }
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
@@ -78,24 +72,6 @@ const LoginPage = () => {
               <Signal className="h-8 w-8 text-purple-600 mb-2" />
               <h3 className="font-semibold text-gray-900">Network Metrics</h3>
               <p className="text-sm text-gray-600">Network performance data</p>
-            </div>
-          </div>
-
-          {/* Demo accounts */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-4">Demo Accounts (Password: password123)</h3>
-            <div className="space-y-3">
-              {demoAccounts.map((account, index) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                  <div>
-                    <p className="font-medium text-gray-900">{account.email}</p>
-                    <p className="text-sm text-gray-600">{account.description}</p>
-                  </div>
-                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                    {account.role}
-                  </span>
-                </div>
-              ))}
             </div>
           </div>
         </div>
