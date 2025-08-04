@@ -6,7 +6,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "debug-login": "node debug-login.js",
-    "debug-bcrypt": "node debug-bcrypt.js"
+    "debug-bcrypt": "node debug-bcrypt.js",
+    "consistent-hash": "node consistent-hash.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
