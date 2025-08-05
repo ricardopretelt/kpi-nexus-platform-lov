@@ -33,45 +33,47 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
+      <div className="w-full max-w-7xl grid lg:grid-cols-2 gap-16 items-center">
         {/* Left side - Branding and info */}
-        <div className="space-y-8">
-          <div>
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="bg-blue-600 p-3 rounded-lg">
-                <Signal className="h-8 w-8 text-white" />
+        <div className="space-y-12">
+          <div className="space-y-8">
+            <div className="flex items-center space-x-4 mb-12">
+              <div className="bg-blue-600 p-4 rounded-xl shadow-lg">
+                <Signal className="h-10 w-10 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">TelecomBI</h1>
-                <p className="text-gray-600">Documentation Platform</p>
+                <h1 className="text-4xl font-bold text-gray-900">TelecomBI</h1>
+                <p className="text-lg text-gray-600 mt-1">Documentation Platform</p>
               </div>
             </div>
             
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Centralized KPI Documentation
-            </h2>
-            <p className="text-xl text-gray-600 mb-8">
-              Streamline your telecom analytics with comprehensive KPI documentation, 
-              version control, and role-based access management.
-            </p>
+            <div className="space-y-6">
+              <h2 className="text-5xl font-bold text-gray-900 leading-tight">
+                Centralized KPI Documentation
+              </h2>
+              <p className="text-xl text-gray-600 leading-relaxed max-w-2xl">
+                Streamline your telecom analytics with comprehensive KPI documentation, 
+                version control, and role-based access management.
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <Database className="h-8 w-8 text-blue-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Data Management</h3>
-              <p className="text-sm text-gray-600">SQL queries and data models</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <Database className="h-10 w-10 text-blue-600 mb-4" />
+              <h3 className="font-semibold text-gray-900 text-lg mb-2">Data Management</h3>
+              <p className="text-gray-600">SQL queries and data models</p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <TrendingUp className="h-8 w-8 text-green-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">KPI Tracking</h3>
-              <p className="text-sm text-gray-600">Performance indicators</p>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <TrendingUp className="h-10 w-10 text-green-600 mb-4" />
+              <h3 className="font-semibold text-gray-900 text-lg mb-2">KPI Tracking</h3>
+              <p className="text-gray-600">Performance indicators</p>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <Signal className="h-8 w-8 text-purple-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Network Metrics</h3>
-              <p className="text-sm text-gray-600">Network performance data</p>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <Signal className="h-10 w-10 text-purple-600 mb-4" />
+              <h3 className="font-semibold text-gray-900 text-lg mb-2">Network Metrics</h3>
+              <p className="text-gray-600">Network performance data</p>
             </div>
           </div>
         </div>
