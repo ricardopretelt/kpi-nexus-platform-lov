@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export interface User {
@@ -7,6 +6,7 @@ export interface User {
   email: string;
   fullName: string;
   role: 'admin' | 'data_specialist' | 'business_specialist' | 'user';
+  isAdmin?: boolean; // New field for admin privileges
 }
 
 interface AuthContextType {
@@ -20,6 +20,7 @@ interface AuthContextType {
   error: string | null;
   clearError: () => void;
   initialized: boolean;
+  hasAdminAccess: (user: User | null) => boolean; // New helper function
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +33,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+
+  // Helper function to check if user has admin access
+  const hasAdminAccess = (user: User | null): boolean => {
+    if (!user) return false;
+    return user.role === 'admin' || user.isAdmin === true || user.email === 'john.doe@company.com';
+  };
 
   // Check for existing token on app load
   useEffect(() => {
@@ -54,6 +61,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.ok) {
         const data = await response.json();
+        // Set admin privileges for john.doe@company.com
+        if (data.user.email === 'john.doe@company.com') {
+          data.user.isAdmin = true;
+        }
         setUser(data.user);
       } else {
         // Token is invalid, remove it
@@ -85,6 +96,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
 
       if (response.ok) {
+        // Set admin privileges for john.doe@company.com
+        if (data.user.email === 'john.doe@company.com') {
+          data.user.isAdmin = true;
+        }
         setUser(data.user);
         localStorage.setItem('authToken', data.token);
         return true;
@@ -219,7 +234,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading, 
       error, 
       clearError,
-      initialized
+      initialized,
+      hasAdminAccess
     }}>
       {children}
     </AuthContext.Provider>

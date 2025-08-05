@@ -11,7 +11,7 @@ import { api, Topic } from '../services/api';
 type Page = 'home' | 'topics' | 'kpi' | 'users';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, hasAdminAccess } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
@@ -94,7 +94,7 @@ const Dashboard = () => {
         {currentPage === 'kpi' && selectedKPI && (
           <KPIArticlePage kpi={selectedKPI} onUpdate={handleKPIUpdate} />
         )}
-        {currentPage === 'users' && (
+        {currentPage === 'users' && hasAdminAccess(user) && (
           <UserManagement />
         )}
       </div>
