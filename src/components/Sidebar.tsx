@@ -1,7 +1,6 @@
-
+import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Button } from './ui/button';
 import { Home, FolderOpen, FileText, Users, LogOut, Signal } from 'lucide-react';
 
 interface SidebarProps {
@@ -11,12 +10,12 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ currentPage, onNavigate, userRole }: SidebarProps) => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasAdminAccess } = useAuth();
 
   const navigationItems = [
     { id: 'home', label: 'Home', icon: Home, available: true },
     { id: 'topics', label: 'Topics', icon: FolderOpen, available: true },
-    { id: 'users', label: 'User Management', icon: Users, available: userRole === 'admin' },
+    { id: 'users', label: 'User Management', icon: Users, available: hasAdminAccess(user) },
   ];
 
   const getRoleColor = (role: string) => {
@@ -37,6 +36,13 @@ const Sidebar = ({ currentPage, onNavigate, userRole }: SidebarProps) => {
     }
   };
 
+  const getUserDisplayRole = (user: any) => {
+    if (user?.email === 'john.doe@company.com') {
+      return 'Data Specialist (Admin)';
+    }
+    return getRoleLabel(user?.role || '');
+  };
+
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
       {/* Header */}
@@ -55,10 +61,10 @@ const Sidebar = ({ currentPage, onNavigate, userRole }: SidebarProps) => {
       {/* User Info */}
       <div className="p-4 border-b border-gray-200">
         <div className="space-y-2">
-          <p className="font-medium text-gray-900">{user?.name}</p>
+          <p className="font-medium text-gray-900">{user?.fullName}</p>
           <p className="text-sm text-gray-600">{user?.email}</p>
           <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user?.role || '')}`}>
-            {getRoleLabel(user?.role || '')}
+            {getUserDisplayRole(user)}
           </span>
         </div>
       </div>
