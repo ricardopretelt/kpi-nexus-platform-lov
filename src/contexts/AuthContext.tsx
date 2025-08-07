@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { api } from '../services/api';
 
 export interface User {
   id: string;
@@ -49,6 +50,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setInitialized(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (initialized) {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        api.getUsers()
+          .then(setUsers)
+          .catch(err => {
+            console.error('Failed to fetch users:', err);
+            setUsers([]); // fallback to empty
+          });
+      }
+    }
+  }, [initialized]);
 
   const fetchProfile = async (token: string) => {
     try {
@@ -197,6 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const newUser = await response.json();
         setUsers(prev => [...prev, newUser.user]);
         console.log('User invited:', newUser.user);
+        await api.getUsers().then(setUsers); // Refresh users after successful invite
       } else {
         const error = await response.json();
         setError(error.error || 'Failed to invite user');
