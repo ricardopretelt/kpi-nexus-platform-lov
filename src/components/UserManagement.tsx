@@ -13,6 +13,12 @@ import { UserPlus, Mail, Shield, Users } from 'lucide-react';
 
 const UserManagement = () => {
   const { users, inviteUser } = useAuth();
+
+  // Add debugging
+  console.log('UserManagement - users:', users);
+  console.log('UserManagement - users length:', users.length);
+  console.log('UserManagement - first user:', users[0]);
+
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     email: '',
