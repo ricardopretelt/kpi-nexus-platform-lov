@@ -1,4 +1,19 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://18.217.206.5:3001';
+const API_BASE_URL = (() => {
+  // Check environment variable first
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Check if running locally (localhost or 127.0.0.1)
+  if (typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('localhost')
+  )) {
+    return 'http://localhost:3001';
+  }
+  // Fallback to server
+  return 'http://18.217.206.5:3001';
+})();
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
