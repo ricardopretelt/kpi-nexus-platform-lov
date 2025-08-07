@@ -5,7 +5,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  fullName: string;
+  full_name: string;
   role: 'admin' | 'data_specialist' | 'business_specialist' | 'user';
   isAdmin?: boolean; // New field for admin privileges
 }
