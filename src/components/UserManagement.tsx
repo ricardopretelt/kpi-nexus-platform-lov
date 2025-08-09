@@ -1,6 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,14 +13,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserPlus, Mail, Shield, Users } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 const UserManagement = () => {
-  const { users, inviteUser } = useAuth();
+  const { users, inviteUser, refreshUsers } = useAuth();
+  const [updatingAdmin, setUpdatingAdmin] = useState<string | null>(null);
 
   // Add debugging
   console.log('UserManagement - users:', users);
   console.log('UserManagement - users length:', users.length);
   console.log('UserManagement - first user:', users[0]);
+  
+  // Add specific debugging for admin calculation
+  console.log('UserManagement - users with is_admin:', users.filter(u => u.is_admin === true));
+  console.log('UserManagement - users with role admin:', users.filter(u => u.role === 'admin'));
+  console.log('UserManagement - all users is_admin values:', users.map(u => ({ email: u.email, is_admin: u.is_admin, role: u.role })));
 
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteForm, setInviteForm] = useState({
@@ -26,12 +36,53 @@ const UserManagement = () => {
     role: 'business_specialist' as 'admin' | 'data_specialist' | 'business_specialist'
   });
 
-  const handleInvite = () => {
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+
+  // Add effect to refresh users when component mounts
+  useEffect(() => {
+    console.log('UserManagement - Component mounted, refreshing users...');
+    refreshUsers().then(() => {
+      console.log('UserManagement - Users refreshed');
+    }).catch(err => {
+      console.error('UserManagement - Failed to refresh users:', err);
+    });
+  }, []);
+
+  const handleInvite = async () => {
     if (inviteForm.email && inviteForm.name && inviteForm.role) {
-      inviteUser(inviteForm.email, inviteForm.name, inviteForm.role);
-      setInviteForm({ email: '', name: '', role: 'business_specialist' });
-      setShowInviteDialog(false);
-      console.log('Invitation sent to:', inviteForm.email);
+      const result = await inviteUser(inviteForm.email, inviteForm.name, inviteForm.role);
+      if (result.success) {
+        setGeneratedPassword(result.password);
+      } else {
+        // Handle error
+        console.error('Failed to invite user:', result.error);
+      }
+    }
+  };
+
+  const handleAdminToggle = async (userId: string, currentAdminStatus: boolean) => {
+    setUpdatingAdmin(userId);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}/admin`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_admin: !currentAdminStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update admin status');
+      }
+
+      // Refresh the users list after successful update
+      await refreshUsers();
+    } catch (error) {
+      console.error('Failed to toggle admin status:', error);
+      // You might want to add a toast notification here
+    } finally {
+      setUpdatingAdmin(null);
     }
   };
 
@@ -54,7 +105,7 @@ const UserManagement = () => {
   };
 
   const roleStats = {
-    admin: users.filter(u => u.role === 'admin').length,
+    admin: users.filter(u => u.is_admin === true).length,
     data_specialist: users.filter(u => u.role === 'data_specialist').length,
     business_specialist: users.filter(u => u.role === 'business_specialist').length,
   };
@@ -79,58 +130,82 @@ const UserManagement = () => {
             <DialogHeader>
               <DialogTitle>Invite New User</DialogTitle>
               <DialogDescription>
-                Send an invitation to a new user to join the platform
+                {generatedPassword 
+                  ? "User created successfully. Copy the password below:"
+                  : "Create a new user account"}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter full name"
-                  value={inviteForm.name}
-                  onChange={(e) => setInviteForm(prev => ({ ...prev, name: e.target.value }))}
-                />
+            {generatedPassword ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-100 rounded-md">
+                  <p className="font-mono text-sm break-all">{generatedPassword}</p>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button onClick={() => {
+                    navigator.clipboard.writeText(generatedPassword);
+                    // Optional: Add a toast or visual feedback that password was copied
+                  }}>
+                    Copy Password
+                  </Button>
+                  <Button onClick={() => {
+                    setGeneratedPassword(null);
+                    setInviteForm({ email: '', name: '', role: 'business_specialist' });
+                    setShowInviteDialog(false);
+                  }}>
+                    Close
+                  </Button>
+                </div>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="user@telecom.com"
-                  value={inviteForm.email}
-                  onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
-                />
+            ) : (
+              <div className="space-y-4">
+                {/* Existing form fields */}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter full name"
+                    value={inviteForm.name}
+                    onChange={(e) => setInviteForm(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="user@telecom.com"
+                    value={inviteForm.email}
+                    onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select 
+                    value={inviteForm.role} 
+                    onValueChange={(value: any) => setInviteForm(prev => ({ ...prev, role: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="data_specialist">Data Specialist</SelectItem>
+                      <SelectItem value="business_specialist">Business Specialist</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleInvite}>
+                    Create User
+                  </Button>
+                </div>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select 
-                  value={inviteForm.role} 
-                  onValueChange={(value: any) => setInviteForm(prev => ({ ...prev, role: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="data_specialist">Data Specialist</SelectItem>
-                    <SelectItem value="business_specialist">Business Specialist</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleInvite}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send Invitation
-                </Button>
-              </div>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -201,6 +276,7 @@ const UserManagement = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Admin Access</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -214,6 +290,18 @@ const UserManagement = () => {
                     <Badge className={getRoleColor(user.role)}>
                       {getRoleLabel(user.role)}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={user.is_admin === true}
+                        disabled={updatingAdmin === user.id}
+                        onCheckedChange={() => handleAdminToggle(user.id, user.is_admin === true)}
+                      />
+                      {updatingAdmin === user.id && (
+                        <span className="w-4 h-4 border-2 border-t-transparent border-blue-600 rounded-full animate-spin" />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="bg-green-50 text-green-700">

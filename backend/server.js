@@ -134,7 +134,6 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     
     console.log('Login attempt for:', email);
-    console.log('Password provided:', password ? 'YES' : 'NO');
 
     // Validate input
     if (!email || !password) {
@@ -144,11 +143,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Find user by email
     const result = await pool.query(
-      'SELECT id, username, email, password_hash, full_name, role FROM users WHERE email = $1',
+      'SELECT id, username, email, password_hash, full_name, role, is_admin FROM users WHERE email = $1',
       [email]
     );
-
-    console.log('Database query result:', result.rows.length, 'users found');
 
     if (result.rows.length === 0) {
       console.log('❌ User not found in database');
@@ -156,6 +153,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = result.rows[0];
+    console.log('Found user:', user); // Add this debug log
     console.log('✅ User found:', user.email);
     console.log('Stored hash:', user.password_hash);
 
@@ -186,7 +184,8 @@ app.post('/api/auth/login', async (req, res) => {
         username: user.username,
         email: user.email,
         fullName: user.full_name,
-        role: user.role
+        role: user.role,
+        is_admin: user.is_admin // Change from isAdmin to is_admin
       },
       token
     });
@@ -205,7 +204,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, email, full_name, role FROM users WHERE id = $1',
+      'SELECT id, username, email, full_name, role, is_admin FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -220,7 +219,8 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
         username: user.username,
         email: user.email,
         fullName: user.full_name,
-        role: user.role
+        role: user.role,
+        is_admin: user.is_admin // Change from isAdmin to is_admin
       }
     });
   } catch (err) {
@@ -272,6 +272,52 @@ app.put('/api/auth/password', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Password update error:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add this endpoint for user invites
+app.post('/api/users/invite', authenticateToken, async (req, res) => {
+  try {
+    const { email, name: fullName, role } = req.body;
+    const username = email.split('@')[0];
+    const password = req.body.password; // Generated password from frontend
+
+    // Check if user already exists
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1 OR username = $2',
+      [email, username]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = hashPassword(password);
+
+    // Insert new user with force_password_change flag
+    const result = await pool.query(
+      `INSERT INTO users (username, email, password_hash, full_name, role, force_password_change)
+       VALUES ($1, $2, $3, $4, $5, true)
+       RETURNING id, username, email, full_name, role`,
+      [username, email, hashedPassword, fullName, role]
+    );
+
+    const user = result.rows[0];
+
+    res.status(201).json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.full_name,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error('Invite user error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -330,8 +376,21 @@ app.get('/api/topics', authenticateToken, async (req, res) => {
 
 app.get('/api/users', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, username, email, full_name, role FROM users ORDER BY full_name');
-    res.json(result.rows);
+    const result = await pool.query(
+      'SELECT id, username, email, full_name, role, is_admin FROM users ORDER BY full_name'
+    );
+    
+    // Transform the data to ensure proper boolean conversion
+    const users = result.rows.map(user => ({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role,
+      is_admin: user.is_admin === true || user.is_admin === 't' // Convert PostgreSQL boolean to JavaScript boolean
+    }));
+    
+    res.json(users);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -354,8 +413,15 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
     const dataSpecialistResult = await pool.query('SELECT id FROM users WHERE full_name = $1', [dataSpecialist]);
     const businessSpecialistResult = await pool.query('SELECT id FROM users WHERE full_name = $1', [businessSpecialist]);
     
-    const dataSpecialistId = dataSpecialistResult.rows[0]?.id || 1;
-    const businessSpecialistId = businessSpecialistResult.rows[0]?.id || 2;
+    if (dataSpecialistResult.rows.length === 0) {
+      return res.status(400).json({ error: `Data specialist '${dataSpecialist}' not found` });
+    }
+    if (businessSpecialistResult.rows.length === 0) {
+      return res.status(400).json({ error: `Business specialist '${businessSpecialist}' not found` });
+    }
+
+    const dataSpecialistId = dataSpecialistResult.rows[0].id;
+    const businessSpecialistId = businessSpecialistResult.rows[0].id;
     
     const result = await pool.query(`
       INSERT INTO kpis (name, definition, sql_query, topic_id, data_specialist_id, business_specialist_id, dashboard_preview, status)
@@ -410,8 +476,15 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
     const dataSpecialistResult = await pool.query('SELECT id FROM users WHERE full_name = $1', [dataSpecialist]);
     const businessSpecialistResult = await pool.query('SELECT id FROM users WHERE full_name = $1', [businessSpecialist]);
     
-    const dataSpecialistId = dataSpecialistResult.rows[0]?.id || 1;
-    const businessSpecialistId = businessSpecialistResult.rows[0]?.id || 2;
+    if (dataSpecialistResult.rows.length === 0) {
+      return res.status(400).json({ error: `Data specialist '${dataSpecialist}' not found` });
+    }
+    if (businessSpecialistResult.rows.length === 0) {
+      return res.status(400).json({ error: `Business specialist '${businessSpecialist}' not found` });
+    }
+
+    const dataSpecialistId = dataSpecialistResult.rows[0].id;
+    const businessSpecialistId = businessSpecialistResult.rows[0].id;
     
     await pool.query(`
       UPDATE kpis 
@@ -453,4 +526,5 @@ app.delete('/api/kpis/:id', authenticateToken, async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  console.log('🔧 Backend server started with latest changes'); // Add this line
 });
