@@ -52,10 +52,10 @@ CREATE TABLE kpi_versions (
 -- Insert initial data with properly hashed passwords
 -- Password for all users: "password123"
 INSERT INTO users (username, email, password_hash, full_name, role, is_admin) VALUES
-('john.doe', 'john.doe@company.com', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'John Doe', 'data_specialist', 't'),
-('jane.smith', 'jane.smith@company.com', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'Jane Smith', 'business_specialist', 'f'),
-('emily.clark', 'emily.clark@company.com', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'Emily Clark', 'data_specialist', 'f'),
-('tom.brown', 'tom.brown@company.com', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'Tom Brown', 'business_specialist', 'f');
+('john.doe', 'john.doe@company.com', 'cd42b4b8db25b0a27ad8625b6c3c67d4d3fb44b31c1bb76f7b8e8ea8f68b9ac8', 'John Doe', 'data_specialist', 't'),
+('jane.smith', 'jane.smith@company.com', 'cd42b4b8db25b0a27ad8625b6c3c67d4d3fb44b31c1bb76f7b8e8ea8f68b9ac8', 'Jane Smith', 'business_specialist', 'f'),
+('emily.clark', 'emily.clark@company.com', 'cd42b4b8db25b0a27ad8625b6c3c67d4d3fb44b31c1bb76f7b8e8ea8f68b9ac8', 'Emily Clark', 'data_specialist', 'f'),
+('tom.brown', 'tom.brown@company.com', 'cd42b4b8db25b0a27ad8625b6c3c67d4d3fb44b31c1bb76f7b8e8ea8f68b9ac8', 'Tom Brown', 'business_specialist', 'f');
 
 INSERT INTO topics (name, description, icon, color) VALUES
 ('Customer Retention', 'KPIs related to customer loyalty, churn, and acquisition', '', 'bg-blue-500'),
