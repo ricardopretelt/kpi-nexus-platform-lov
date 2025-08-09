@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { api } from '../services/api';
+import { ForcePasswordChangeModal } from '../components/ForcePasswordChangeModal';
 
 export interface User {
   id: string;
@@ -25,6 +26,7 @@ interface AuthContextType {
   hasAdminAccess: (user: User | null) => boolean; // New helper function
   updatePassword: (newPassword: string) => Promise<{ error?: string }>;
   refreshUsers: () => Promise<void>;
+  showForcePasswordChange: boolean; // Add this state
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -61,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
 
   // Helper function to check if user has admin access
   const hasAdminAccess = (user: User | null): boolean => {
@@ -143,10 +146,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Login response:', data); // Add this debug log
 
       if (response.ok) {
-        console.log('Setting user with data:', data.user); // Add this debug log
+        console.log('Setting user with data:', data.user);
         setUser(data.user);
         localStorage.setItem('authToken', data.token);
-        return true;
+        // Check if password change is required
+        if (data.user.force_password_change === true) {
+          console.log('🔒 Password change required for user');
+          setShowForcePasswordChange(true);
+        }
+          
+          return true;
+
       } else {
         setError(data.error || 'Login failed');
         return false;
@@ -163,14 +173,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (username: string, email: string, password: string, fullName: string, role: User['role'] = 'user'): Promise<boolean> => {
     setLoading(true);
     setError(null);
+    const token = localStorage.getItem('authToken');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, email, password, fullName, role }),
+        body: JSON.stringify({
+           username, email, password, fullName, role,  force_password_change: true}),
       });
 
       const data = await response.json();
@@ -221,6 +234,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       password += charset.charAt(Math.floor(Math.random() * charset.length));
     }
     return password;
+  };
+
+
+  const handleForcePasswordChange = async (newPassword: string) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        return { error: 'Not authenticated' };
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      if (response.ok) {
+        // Password change successful - update user state and close modal
+        setUser(prev => prev ? { ...prev, force_password_change: false } : null);
+        setShowForcePasswordChange(false);
+        return {};
+      } else {
+        const errorData = await response.json();
+        return { error: errorData.error || 'Failed to change password' };
+      }
+    } catch (err) {
+      console.error('Password change error:', err);
+      return { error: 'Network error. Please try again.' };
+    }
   };
 
   const inviteUser = async (email: string, name: string, role: User['role']) => {
@@ -342,9 +387,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       initialized,
       hasAdminAccess,
       updatePassword,
-      refreshUsers
+      refreshUsers,
+      showForcePasswordChange
     }}>
       {children}
+      
+      {/* Force Password Change Modal */}
+      {showForcePasswordChange && user && (
+        <ForcePasswordChangeModal
+          isOpen={showForcePasswordChange}
+          onPasswordChange={handleForcePasswordChange}
+          userEmail={user.email}
+        />
+      )}
     </AuthContext.Provider>
   );
 };

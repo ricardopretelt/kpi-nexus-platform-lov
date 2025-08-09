@@ -7,6 +7,7 @@ CREATE TABLE users (
     full_name VARCHAR(100) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'user',
     is_admin BOOLEAN DEFAULT FALSE,
+    force_password_change BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -51,11 +52,11 @@ CREATE TABLE kpi_versions (
 
 -- Insert initial data with properly hashed passwords
 -- Password for all users: "password123"
-INSERT INTO users (username, email, password_hash, full_name, role, is_admin) VALUES
-('john.doe', 'john.doe@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'John Doe', 'data_specialist', 't'),
-('jane.smith', 'jane.smith@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Jane Smith', 'business_specialist', 'f'),
-('emily.clark', 'emily.clark@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Emily Clark', 'data_specialist', 'f'),
-('tom.brown', 'tom.brown@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Tom Brown', 'business_specialist', 'f');
+INSERT INTO users (username, email, password_hash, full_name, role, is_admin, force_password_change) VALUES
+('john.doe', 'john.doe@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'John Doe', 'data_specialist', 't', 'f'),
+('jane.smith', 'jane.smith@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Jane Smith', 'business_specialist', 'f', 'f'),
+('emily.clark', 'emily.clark@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Emily Clark', 'data_specialist', 'f', 'f'),
+('tom.brown', 'tom.brown@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Tom Brown', 'business_specialist', 'f', 'f');
 
 INSERT INTO topics (name, description, icon, color) VALUES
 ('Customer Retention', 'KPIs related to customer loyalty, churn, and acquisition', '', 'bg-blue-500'),
