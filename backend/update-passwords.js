@@ -1,5 +1,5 @@
-const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
+const { hashPassword, verifyPassword } = require('./consistent-hash');
 
 const pool = new Pool({
   user: 'postgres',
@@ -11,11 +11,10 @@ const pool = new Pool({
 
 async function updatePasswords() {
   try {
-    console.log('Generating proper bcrypt hash for password123...');
+    console.log('Generating proper SHA256 hash for password123...');
     
     const password = 'password123';
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = hashPassword(password);
     
     console.log('Generated hash:', hashedPassword);
     
@@ -41,7 +40,7 @@ async function updatePasswords() {
     });
     
     // Test the hash
-    const testResult = await bcrypt.compare(password, hashedPassword);
+    const testResult = verifyPassword(password, hashedPassword);
     console.log('\nHash verification test:', testResult ? '✅ PASS' : '❌ FAIL');
     
   } catch (error) {

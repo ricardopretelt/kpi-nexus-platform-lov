@@ -43,7 +43,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://18.217.206.5:3001
+      # No VITE_API_URL - let frontend auto-detect
     depends_on:
       - backend
     networks:

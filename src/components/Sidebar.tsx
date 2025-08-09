@@ -12,6 +12,12 @@ interface SidebarProps {
 const Sidebar = ({ currentPage, onNavigate, userRole }: SidebarProps) => {
   const { user, logout, hasAdminAccess } = useAuth();
 
+  // Add temporary debug
+  console.log('=== Sidebar DEBUG ===');
+  console.log('User:', user);
+  console.log('hasAdminAccess result:', hasAdminAccess(user));
+  console.log('User is_admin:', user?.is_admin);
+
   const navigationItems = [
     { id: 'home', label: 'Home', icon: Home, available: true },
     { id: 'topics', label: 'Topics', icon: FolderOpen, available: true },
@@ -61,7 +67,7 @@ const Sidebar = ({ currentPage, onNavigate, userRole }: SidebarProps) => {
       {/* User Info */}
       <div className="p-4 border-b border-gray-200">
         <div className="space-y-2">
-          <p className="font-medium text-gray-900">{user?.fullName}</p>
+          <p className="font-medium text-gray-900">{user?.full_name}</p>
           <p className="text-sm text-gray-600">{user?.email}</p>
           <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user?.role || '')}`}>
             {getUserDisplayRole(user)}

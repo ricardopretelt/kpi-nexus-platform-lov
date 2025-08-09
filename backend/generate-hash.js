@@ -1,16 +1,15 @@
-const bcrypt = require('bcrypt');
+const { hashPassword, verifyPassword } = require('./consistent-hash');
 
-async function generateHash() {
+function generateHash() {
   const password = 'password123';
-  const saltRounds = 12;
   
   try {
-    const hash = await bcrypt.hash(password, saltRounds);
+    const hash = hashPassword(password);
     console.log('Password:', password);
     console.log('Generated Hash:', hash);
     
     // Verify the hash works
-    const isValid = await bcrypt.compare(password, hash);
+    const isValid = verifyPassword(password, hash);
     console.log('Hash verification:', isValid);
     
     console.log('\nSQL to update database:');
