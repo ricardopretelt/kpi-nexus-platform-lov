@@ -131,32 +131,10 @@ const UserManagement = () => {
               <DialogTitle>Invite New User</DialogTitle>
               <DialogDescription>
                 {generatedPassword 
-                  ? "User created successfully. Copy the password below:"
+                  ? "User created successfully."
                   : "Create a new user account"}
               </DialogDescription>
             </DialogHeader>
-            {generatedPassword ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-gray-100 rounded-md">
-                  <p className="font-mono text-sm break-all">{generatedPassword}</p>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button onClick={() => {
-                    navigator.clipboard.writeText(generatedPassword);
-                    // Optional: Add a toast or visual feedback that password was copied
-                  }}>
-                    Copy Password
-                  </Button>
-                  <Button onClick={() => {
-                    setGeneratedPassword(null);
-                    setInviteForm({ email: '', name: '', role: 'business_specialist' });
-                    setShowInviteDialog(false);
-                  }}>
-                    Close
-                  </Button>
-                </div>
-              </div>
-            ) : (
               <div className="space-y-4">
                 {/* Existing form fields */}
                 <div className="space-y-2">
@@ -205,7 +183,7 @@ const UserManagement = () => {
                   </Button>
                 </div>
               </div>
-            )}
+            
           </DialogContent>
         </Dialog>
       </div>
