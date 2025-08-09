@@ -31,26 +31,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = (() => {
   console.log('🔍 AuthContext Environment check:');
-  console.log('- import.meta.env.VITE_API_URL:', import.meta.env.VITE_API_URL);
   console.log('- window.location.hostname:', window?.location?.hostname);
   
-  // Check environment variable first
-  if (import.meta.env.VITE_API_URL) {
-    console.log('AuthContext using VITE_API_URL:', import.meta.env.VITE_API_URL);
-    return import.meta.env.VITE_API_URL;
+  // Auto-detect based on how the frontend is accessed
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // If accessing via localhost, use localhost backend
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      console.log('AuthContext using localhost backend');
+      return 'http://localhost:3001';
+    }
+    
+    // If accessing via server IP, use server backend  
+    if (hostname === '18.217.206.5') {
+      console.log('AuthContext using server backend');
+      return 'http://18.217.206.5:3001';
+    }
   }
-  // Check if running locally (localhost or 127.0.0.1)
-  if (typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.includes('localhost')
-  )) {
-    console.log('AuthContext using localhost detection');
-    return 'http://localhost:3001';
-  }
-  // Fallback to server
-  console.log('AuthContext using fallback server URL');
-  return 'http://18.217.206.5:3001';
+  
+  // Default fallback to localhost for development
+  console.log('AuthContext using default localhost');
+  return 'http://localhost:3001';
 })();
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
