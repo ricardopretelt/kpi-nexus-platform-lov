@@ -71,8 +71,7 @@ const authenticateToken = (req, res, next) => {
 // Authentication routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password, fullName, role = 'user' } = req.body;
-
+    const { username, email, password, fullName, role = 'user', force_password_change = false } = req.body;
     // Validate input
     if (!username || !email || !password || !fullName) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -96,11 +95,12 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = hashPassword(password);
 
     // Insert new user
+    // Insert new user with force_password_change flag
     const result = await pool.query(
-      `INSERT INTO users (username, email, password_hash, full_name, role)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, username, email, full_name, role`,
-      [username, email, hashedPassword, fullName, role]
+      `INSERT INTO users (username, email, password_hash, full_name, role, force_password_change)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, username, email, full_name, role, force_password_change`,
+      [username, email, hashedPassword, fullName, role, force_password_change]
     );
 
     const user = result.rows[0];
@@ -119,7 +119,8 @@ app.post('/api/auth/register', async (req, res) => {
         username: user.username,
         email: user.email,
         fullName: user.full_name,
-        role: user.role
+        role: user.role,
+        force_password_change: user.force_password_change
       },
       token
     });
@@ -141,9 +142,9 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user by email
+    // Find user by email - Include force_password_change field
     const result = await pool.query(
-      'SELECT id, username, email, password_hash, full_name, role, is_admin FROM users WHERE email = $1',
+      'SELECT id, username, email, password_hash, full_name, role, is_admin, force_password_change FROM users WHERE email = $1',
       [email]
     );
 
@@ -185,7 +186,8 @@ app.post('/api/auth/login', async (req, res) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
-        is_admin: user.is_admin // Change from isAdmin to is_admin
+        is_admin: user.is_admin,
+        force_password_change: user.force_password_change
       },
       token
     });
@@ -318,6 +320,30 @@ app.post('/api/users/invite', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Invite user error:', err);
     res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+
+// Password change endpoint
+app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
+
+    const hashedPassword = hashPassword(newPassword);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, force_password_change = FALSE WHERE id = $2',
+      [hashedPassword, userId]
+    );
+
+    res.json({ message: 'Password changed successfully', success: true });
+  } catch (err) {
+    console.error('Password change error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
