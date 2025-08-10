@@ -22,12 +22,6 @@ export const ActionSelectionModal: React.FC<ActionSelectionModalProps> = ({
           <DialogTitle>Please choose action for user</DialogTitle>
         </DialogHeader>
         
-        <div className="py-4">
-          <p className="text-sm text-muted-foreground">
-            What would you like to do with <strong>{userName}</strong>?
-          </p>
-        </div>
-        
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
