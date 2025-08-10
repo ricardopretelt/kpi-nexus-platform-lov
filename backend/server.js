@@ -420,7 +420,7 @@ app.get('/api/topics', authenticateToken, async (req, res) => {
 app.get('/api/users', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, email, full_name, role, is_admin FROM users ORDER BY full_name'
+      'SELECT id, username, email, full_name, role, is_admin, is_active FROM users ORDER BY full_name'
     );
     
     // Transform the data to ensure proper boolean conversion
@@ -430,7 +430,8 @@ app.get('/api/users', authenticateToken, async (req, res) => {
       email: user.email,
       full_name: user.full_name,
       role: user.role,
-      is_admin: user.is_admin === true || user.is_admin === 't' // Convert PostgreSQL boolean to JavaScript boolean
+      is_admin: user.is_admin === true || user.is_admin === 't', // Convert PostgreSQL boolean to JavaScript boolean
+      is_active: user.is_active === true || user.is_active === 't' // Add this line
     }));
     
     res.json(users);

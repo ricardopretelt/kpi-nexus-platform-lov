@@ -54,7 +54,7 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 
 const UserManagement = () => {
-  const { users, inviteUser, refreshUsers, user: currentUser, logoutAndRedirect } = useAuth();
+  const { users, inviteUser, refreshUsers, user: currentUser, logoutAndRedirect, onUserUpdate } = useAuth();
   const [updatingAdmin, setUpdatingAdmin] = useState<string | null>(null);
   
   // Confirmation dialog state
@@ -88,6 +88,20 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
+  // Add effect to listen to user updates
+  useEffect(() => {
+    const cleanup = onUserUpdate(() => {
+      console.log('User update detected, refreshing users...');
+      refreshUsers().then(() => {
+        console.log('Users refreshed via onUserUpdate');
+      }).catch(err => {
+        console.error('Failed to refresh via onUserUpdate:', err);
+      });
+    });
+    
+    return cleanup;
+  }, [onUserUpdate]); // Remove refreshUsers from dependencies
+
   // Add effect to refresh users when component mounts
   useEffect(() => {
     console.log('UserManagement - Component mounted, refreshing users...');
@@ -97,6 +111,17 @@ const UserManagement = () => {
       console.error('UserManagement - Failed to refresh users:', err);
     });
   }, []);
+
+  // Add debugging for users state changes
+  useEffect(() => {
+    console.log('=== Users state changed ===');
+    console.log('Users:', users);
+    console.log('Users with is_active values:', users.map(u => ({ 
+      email: u.email, 
+      is_active: u.is_active,
+      id: u.id 
+    })));
+  }, [users]);
 
   const handleInvite = async () => {
     if (inviteForm.email && inviteForm.name && inviteForm.role) {
@@ -210,6 +235,17 @@ const UserManagement = () => {
     }
   };
 
+  const getStatusBadge = (isActive: boolean) => {
+    return (
+      <Badge 
+        variant="outline" 
+        className={isActive ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}
+      >
+        {isActive ? "Active" : "Inactive"}
+      </Badge>
+    );
+  };
+
   const roleStats = {
     admin: users.filter(u => u.is_admin === true).length,
     data_specialist: users.filter(u => u.role === 'data_specialist').length,
@@ -231,14 +267,47 @@ const UserManagement = () => {
     setShowEditModal(true);
   };
 
-  const handleEditClose = () => {
+  const handleEditClose = async () => {
+    console.log('=== handleEditClose called ===');
+    console.log('Current users before refresh:', users);
+    
     setShowEditModal(false);
     setSelectedUser(null);
+    
+    // Force refresh users list with multiple attempts
+    console.log('Modal closed, refreshing users...');
+    
+    // First attempt - immediate refresh
+    try {
+      console.log('Attempting immediate refresh...');
+      await refreshUsers();
+      console.log('Users refreshed after modal close');
+      console.log('Users after refresh:', users);
+    } catch (error) {
+      console.error('Failed to refresh users after modal close:', error);
+    }
+    
+    // Second attempt - delayed refresh to ensure backend has processed the update
+    setTimeout(async () => {
+      console.log('Delayed refresh attempt...');
+      try {
+        await refreshUsers();
+        console.log('Delayed refresh completed');
+        console.log('Users after delayed refresh:', users);
+      } catch (error) {
+        console.error('Delayed refresh failed:', error);
+      }
+    }, 1000); // Increased delay to 1 second
   };
 
   const handleActionModalClose = () => {
     setShowActionModal(false);
     setSelectedUser(null);
+  };
+
+  const handleSelfDeactivation = () => {
+    // User has deactivated themselves, redirect to login
+    logoutAndRedirect('/'); // Changed from '/login' to '/' since login might be handled differently
   };
 
   const filteredUsers = users.filter(user => {
@@ -458,9 +527,7 @@ const UserManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-green-50 text-green-700">
-                      Active
-                    </Badge>
+                    {getStatusBadge(user.is_active ?? true)}
                   </TableCell>
                   <TableCell>
                     <Button 
@@ -567,6 +634,8 @@ const UserManagement = () => {
           isOpen={showEditModal}
           onClose={handleEditClose}
           user={selectedUser}
+          currentUserId={currentUser?.id}
+          onSelfDeactivation={handleSelfDeactivation}
         />
       )}
     </div>

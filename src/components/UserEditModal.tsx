@@ -16,9 +16,17 @@ interface UserEditModalProps {
     email: string;
     is_active?: boolean;
   };
+  currentUserId?: string; // Add this to check for self-deactivation
+  onSelfDeactivation?: () => void; // Add this callback for self-deactivation
 }
 
-export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) => {
+export const UserEditModal: React.FC<UserEditModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  user, 
+  currentUserId,
+  onSelfDeactivation 
+}) => {
   const [formData, setFormData] = useState({
     full_name: user.full_name,
     email: user.email,
@@ -36,10 +44,23 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, u
       const result = await updateUser(user.id, formData);
       
       if (result.success) {
-        toast({
-          title: "User Updated",
-          description: "User information has been successfully updated."
-        });
+        // Check for self-deactivation
+        if (currentUserId && user.id === currentUserId && formData.is_active === false) {
+          toast({
+            title: "Account Deactivated",
+            description: "Your account has been deactivated. You will be redirected to login.",
+          });
+          
+          // Call the callback to handle self-deactivation
+          if (onSelfDeactivation) {
+            onSelfDeactivation();
+          }
+        } else {
+          toast({
+            title: "User Updated",
+            description: "User information has been successfully updated."
+          });
+        }
         onClose();
       } else {
         toast({
