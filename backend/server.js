@@ -91,14 +91,24 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters long' });
     }
 
-    // Check if user already exists
+    // Check if user already exists - Enhanced email uniqueness check
     const existingUser = await pool.query(
       'SELECT id FROM users WHERE email = $1 OR username = $2',
       [email, username]
     );
 
     if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'User already exists' });
+      // Check specifically for email duplication
+      const emailCheck = await pool.query(
+        'SELECT id FROM users WHERE email = $1',
+        [email]
+      );
+      
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already taken' });
+      }
+      
+      return res.status(400).json({ error: 'Username already taken' });
     }
 
     // Hash password using consistent hash
@@ -210,6 +220,34 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Login error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add email uniqueness check endpoint
+app.post('/api/auth/check-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Validate input
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if email already exists
+    const result = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    const available = result.rows.length === 0;
+    
+    res.json({ 
+      available,
+      message: available ? 'Email is available' : 'Email already taken'
+    });
+  } catch (err) {
+    console.error('Email check error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -630,6 +668,19 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Check email uniqueness - skip if email unchanged
+    const currentUser = await pool.query('SELECT email FROM users WHERE id = $1', [id]);
+    if (currentUser.rows.length > 0 && currentUser.rows[0].email !== email) {
+      const emailCheck = await pool.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email, id]
+      );
+      
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already taken' });
+      }
+    }
+
     // Update user
     await pool.query(
       'UPDATE users SET full_name = $1, email = $2, is_active = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
@@ -643,6 +694,35 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'User updated successfully' });
   } catch (err) {
     console.error('Error updating user:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add email availability check endpoint (optional)
+app.post('/api/auth/check-email', async (req, res) => {
+  try {
+    const { email, excludeUserId } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    let query = 'SELECT id FROM users WHERE email = $1';
+    let params = [email];
+    
+    if (excludeUserId) {
+      query += ' AND id != $2';
+      params.push(excludeUserId);
+    }
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ 
+      available: result.rows.length === 0,
+      email: email
+    });
+  } catch (err) {
+    console.error('Email check error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

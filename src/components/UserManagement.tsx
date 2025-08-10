@@ -88,6 +88,18 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+
+  // Add this function
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInviteForm(prev => ({ ...prev, email: e.target.value }));
+    // Clear email error when user types
+    if (emailError) {
+      setEmailError(null);
+    }
+  };
+
   // Add effect to listen to user updates
   useEffect(() => {
     const cleanup = onUserUpdate(() => {
@@ -123,14 +135,66 @@ const UserManagement = () => {
     })));
   }, [users]);
 
+  // Add email uniqueness check function
+  const checkEmailUniqueness = async (email: string): Promise<boolean> => {
+    if (!email) return true;
+    
+    setIsCheckingEmail(true);
+    setEmailError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/check-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.available) {
+          return true;
+        } else {
+          setEmailError('Email already taken');
+          return false;
+        }
+      } else {
+        // If endpoint doesn't exist, we'll handle it in the backend validation
+        return true;
+      }
+    } catch (error) {
+      // If check fails, we'll rely on backend validation
+      return true;
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
   const handleInvite = async () => {
     if (inviteForm.email && inviteForm.name && inviteForm.role) {
+      // Clear previous email error
+      setEmailError(null);
+      
+      // Check email uniqueness before submitting
+      const isEmailUnique = await checkEmailUniqueness(inviteForm.email);
+      if (!isEmailUnique) {
+        return; // Form submission prevented
+      }
+      
       const result = await inviteUser(inviteForm.email, inviteForm.name, inviteForm.role);
       if (result.success) {
         setGeneratedPassword(result.password);
+        // Clear form and errors
+        setInviteForm({ email: '', name: '', role: 'business_specialist' });
+        setEmailError(null);
       } else {
-        // Handle error
-        console.error('Failed to invite user:', result.error);
+        // Handle backend validation errors
+        if (result.error === 'Email already taken') {
+          setEmailError('Email already taken');
+        } else {
+          console.error('Failed to invite user:', result.error);
+        }
       }
     }
   };
@@ -378,8 +442,15 @@ const UserManagement = () => {
                     type="email"
                     placeholder="user@telecom.com"
                     value={inviteForm.email}
-                    onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={handleEmailChange}
+                    className={emailError ? "border-red-500" : ""}
                   />
+                  {emailError && (
+                    <p className="text-sm text-red-600">{emailError}</p>
+                  )}
+                  {isCheckingEmail && (
+                    <p className="text-sm text-gray-500">Checking email availability...</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -402,8 +473,8 @@ const UserManagement = () => {
                   <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleInvite}>
-                    Create User
+                  <Button onClick={handleInvite} disabled={isCheckingEmail}>
+                    {isCheckingEmail ? "Checking..." : "Create User"}
                   </Button>
                 </div>
               </div>

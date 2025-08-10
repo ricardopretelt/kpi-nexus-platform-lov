@@ -33,11 +33,65 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
     is_active: user.is_active ?? true
   });
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const { updateUser } = useAuth();
   const { toast } = useToast();
 
+  // Check email uniqueness when email changes
+  const checkEmailUniqueness = async (email: string): Promise<boolean> => {
+    // Skip validation if email unchanged from current user
+    if (email === user.email) {
+      setEmailError(null);
+      return true;
+    }
+    
+    if (!email) return true;
+    
+    setIsCheckingEmail(true);
+    setEmailError(null);
+    
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/auth/check-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, excludeUserId: user.id }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.available) {
+          return true;
+        } else {
+          setEmailError('Email already taken');
+          return false;
+        }
+      } else {
+        // If endpoint doesn't exist, we'll handle it in the backend validation
+        return true;
+      }
+    } catch (error) {
+      // If check fails, we'll rely on backend validation
+      return true;
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous email error
+    setEmailError(null);
+    
+    // Check email uniqueness before submitting
+    const isEmailUnique = await checkEmailUniqueness(formData.email);
+    if (!isEmailUnique) {
+      return; // Form submission prevented
+    }
+    
     setLoading(true);
 
     try {
@@ -63,11 +117,16 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
         }
         onClose();
       } else {
-        toast({
-          title: "Update Failed",
-          description: result.error || "Failed to update user.",
-          variant: "destructive"
-        });
+        // Handle backend validation errors
+        if (result.error === 'Email already taken') {
+          setEmailError('Email already taken');
+        } else {
+          toast({
+            title: "Update Failed",
+            description: result.error || "Failed to update user.",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
       toast({
@@ -80,6 +139,17 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
     }
   };
 
+  // Update email input to clear error when typing
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setFormData({ ...formData, email: newEmail });
+    
+    // Clear error when user starts typing new email
+    if (emailError) {
+      setEmailError(null);
+    }
+  };
+
   const handleCancel = () => {
     // Reset form data to original values
     setFormData({
@@ -87,7 +157,28 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
       email: user.email,
       is_active: user.is_active ?? true
     });
+    setEmailError(null);
     onClose();
+  };
+
+  // Helper function to get API base URL (same as in UserManagement)
+  const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:3001';
+    }
+    
+    if (hostname === '18.217.206.5' || hostname.includes('ip-')) {
+      return `http://${hostname}:3001`;
+    }
+    
+    return `http://${hostname}:3001`;
   };
 
   return (
@@ -115,10 +206,17 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
               id="email"
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={handleEmailChange}
               placeholder="Enter email"
               required
+              className={emailError ? "border-red-500" : ""}
             />
+            {emailError && (
+              <p className="text-sm text-red-600">{emailError}</p>
+            )}
+            {isCheckingEmail && (
+              <p className="text-sm text-gray-500">Checking email availability...</p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -141,8 +239,8 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
+            <Button type="submit" disabled={loading || isCheckingEmail}>
+              {loading ? "Saving..." : isCheckingEmail ? "Checking..." : "Save"}
             </Button>
           </DialogFooter>
         </form>
