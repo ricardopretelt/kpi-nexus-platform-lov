@@ -152,9 +152,9 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user by email - Include force_password_change field
+    // Find user by email - Include is_active field
     const result = await pool.query(
-      'SELECT id, username, email, password_hash, full_name, role, is_admin, force_password_change FROM users WHERE email = $1',
+      'SELECT id, username, email, password_hash, full_name, role, is_admin, is_active, force_password_change FROM users WHERE email = $1',
       [email]
     );
 
@@ -164,9 +164,15 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = result.rows[0];
-    console.log('Found user:', user); // Add this debug log
+    console.log('Found user:', user);
     console.log('✅ User found:', user.email);
     console.log('Stored hash:', user.password_hash);
+
+    // Check if user is active
+    if (!user.is_active) {
+      console.log('❌ User account is inactive');
+      return res.status(401).json({ error: 'Account is inactive. Please contact administrator.' });
+    }
 
     // Verify password using consistent hash
     const isValidPassword = verifyPassword(password, user.password_hash);
@@ -197,6 +203,7 @@ app.post('/api/auth/login', async (req, res) => {
         fullName: user.full_name,
         role: user.role,
         is_admin: user.is_admin,
+        is_active: user.is_active,
         force_password_change: user.force_password_change
       },
       token
@@ -606,6 +613,35 @@ app.delete('/api/kpis/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'KPI deleted successfully' });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add user update endpoint
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { full_name, email, is_active } = req.body;
+    
+    // Check if user exists
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [id]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update user
+    await pool.query(
+      'UPDATE users SET full_name = $1, email = $2, is_active = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
+      [full_name, email, is_active, id]
+    );
+
+    // No need to update KPIs - they reference users by ID, not by name
+    // The KPI fetch endpoint already JOINs the users table to get current names
+    // When KPIs are fetched, they will automatically show the updated names
+
+    res.json({ message: 'User updated successfully' });
+  } catch (err) {
+    console.error('Error updating user:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

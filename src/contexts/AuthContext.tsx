@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import { ForcePasswordChangeModal } from '../components/ForcePasswordChangeModal';
 
@@ -9,6 +9,7 @@ export interface User {
   full_name: string;
   role: 'admin' | 'data_specialist' | 'business_specialist' | 'user';
   is_admin?: boolean;
+  is_active?: boolean;
   force_password_change?: boolean;
 }
 
@@ -16,18 +17,21 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  logoutAndRedirect: (redirectTo?: string) => void; // New function for logout with redirect
+  logoutAndRedirect: (redirectTo?: string) => void;
   register: (username: string, email: string, password: string, fullName: string, role?: User['role']) => Promise<boolean>;
   users: User[];
   inviteUser: (email: string, name: string, role: User['role']) => Promise<{ success: boolean; error?: string; password?: string }>;
+  updateUser: (userId: string, userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   loading: boolean;
   error: string | null;
   clearError: () => void;
   initialized: boolean;
-  hasAdminAccess: (user: User | null) => boolean; // New helper function
+  hasAdminAccess: (user: User | null) => boolean;
   updatePassword: (newPassword: string) => Promise<{ error?: string }>;
   refreshUsers: () => Promise<void>;
-  showForcePasswordChange: boolean; // Add this state
+  showForcePasswordChange: boolean;
+  onUserUpdate: (callback: () => void) => () => void;
+  emitUserUpdate: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,20 +44,17 @@ const API_BASE_URL = (() => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-    // If accessing via localhost, use localhost backend
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       console.log('AuthContext using localhost backend');
       return 'http://localhost:3001';
     }
     
-    // If accessing via server IP, use server backend  
     if (hostname === '18.217.206.5') {
       console.log('AuthContext using server backend');
       return 'http://18.217.206.5:3001';
     }
   }
   
-  // Default fallback to localhost for development
   console.log('AuthContext using default localhost');
   return 'http://localhost:3001';
 })();
@@ -65,8 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
+  
+  // Add this state variable for user update event propagation
+  const [userUpdateListeners, setUserUpdateListeners] = useState<(() => void)[]>([]);
 
-  // Helper function to check if user has admin access
   const hasAdminAccess = (user: User | null): boolean => {
     console.log('=== hasAdminAccess DEBUG ===');
     console.log('User:', user);
@@ -94,7 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const token = localStorage.getItem('authToken');
       if (token) {
         api.getUsers()
-          .then(setUsers) // Just use the users as they come from server
+          .then(setUsers)
           .catch(err => {
             console.error('Failed to fetch users:', err);
             setUsers([]);
@@ -114,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Profile data:', data); // Add debug log
+        console.log('Profile data:', data);
         setUser(data.user);
       } else {
         // Token is invalid, remove it
@@ -144,20 +147,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       const data = await response.json();
-      console.log('Login response:', data); // Add this debug log
+      console.log('Login response:', data);
 
       if (response.ok) {
         console.log('Setting user with data:', data.user);
+        
+        // Check if user is active before allowing login
+        if (data.user.is_active === false) {
+          setError('Account is deactivated. Please contact an administrator.');
+          return false;
+        }
+        
         setUser(data.user);
         localStorage.setItem('authToken', data.token);
+        
         // Check if password change is required
         if (data.user.force_password_change === true) {
           console.log('🔒 Password change required for user');
           setShowForcePasswordChange(true);
         }
-          
-          return true;
-
+        
+        return true;
       } else {
         setError(data.error || 'Login failed');
         return false;
@@ -184,7 +194,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-           username, email, password, fullName, role,  force_password_change: true}),
+          username, email, password, fullName, role, force_password_change: true
+        }),
       });
 
       const data = await response.json();
@@ -247,7 +258,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return password;
   };
 
-
   const handleForcePasswordChange = async (newPassword: string) => {
     try {
       const token = localStorage.getItem('authToken');
@@ -301,7 +311,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           password: generatedPassword, 
           fullName: name, 
           role,
-          force_password_change: true // Add this flag
+          force_password_change: true
         }),
       });
 
@@ -356,6 +366,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateUser = async (userId: string, userData: Partial<User>): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (response.ok) {
+        // Refresh users list
+        await refreshUsers();
+        
+        // Emit user update event to notify all components
+        emitUserUpdate();
+        
+        return { success: true };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.error || 'Failed to update user' };
+      }
+    } catch (err) {
+      console.error('Update user error:', err);
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -365,12 +404,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (token) {
       try {
         const fetchedUsers = await api.getUsers();
-        setUsers(fetchedUsers); // don't overwrite is_admin
+        setUsers(fetchedUsers);
       } catch (err) {
         console.error('Failed to refresh users:', err);
       }
     }
   };
+
+  // User update event propagation functions
+  const onUserUpdate = useCallback((callback: () => void) => {
+    setUserUpdateListeners(prev => [...prev, callback]);
+    
+    // Return cleanup function
+    return () => {
+      setUserUpdateListeners(prev => prev.filter(cb => cb !== callback));
+    };
+  }, []);
+
+  const emitUserUpdate = useCallback(() => {
+    userUpdateListeners.forEach(callback => callback());
+  }, [userUpdateListeners]);
 
   // Show loading while initializing
   if (!initialized) {
@@ -389,10 +442,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user, 
       login, 
       logout, 
-      logoutAndRedirect, // Add the new function
+      logoutAndRedirect,
       register, 
       users, 
       inviteUser, 
+      updateUser,
       loading, 
       error, 
       clearError,
@@ -400,7 +454,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       hasAdminAccess,
       updatePassword,
       refreshUsers,
-      showForcePasswordChange
+      showForcePasswordChange,
+      onUserUpdate,
+      emitUserUpdate
     }}>
       {children}
       
