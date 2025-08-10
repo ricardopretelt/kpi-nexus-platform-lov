@@ -11,7 +11,7 @@ import { api, Topic } from '../services/api';
 type Page = 'home' | 'topics' | 'kpi' | 'users';
 
 const Dashboard = () => {
-  const { user, hasAdminAccess } = useAuth();
+  const { user, hasAdminAccess, onUserUpdate } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [selectedKPI, setSelectedKPI] = useState<KPI | null>(null);
@@ -20,26 +20,37 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [kpisData, topicsData] = await Promise.all([
-          api.getKPIs(),
-          api.getTopics()
-        ]);
-        setKpis(kpisData);
-        setTopics(topicsData);
-      } catch (err) {
-        setError('Failed to load data');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Function to fetch KPI and topic data
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [kpisData, topicsData] = await Promise.all([
+        api.getKPIs(),
+        api.getTopics()
+      ]);
+      setKpis(kpisData);
+      setTopics(topicsData);
+    } catch (err) {
+      setError('Failed to load data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, []);
+
+  // Add user update listener to refresh KPI data when users are updated
+  useEffect(() => {
+    const cleanup = onUserUpdate(() => {
+      console.log('User updated, refreshing KPI data...');
+      fetchData();
+    });
+    
+    return cleanup;
+  }, [onUserUpdate]);
 
   const handleTopicSelect = (topic: string) => {
     setSelectedTopic(topic);

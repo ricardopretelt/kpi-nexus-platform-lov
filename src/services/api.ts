@@ -1,3 +1,5 @@
+import { User } from '../contexts/AuthContext';
+
 const API_BASE_URL = (() => {
   console.log('🔍 Environment check:');
   console.log('- window.location.hostname:', window?.location?.hostname);
@@ -189,5 +191,36 @@ export const api = {
       throw new Error('Failed to delete KPI');
     }
     return response.json();
+  },
+
+  async updateUser(id: string, userData: Partial<User>): Promise<{ message: string }> {
+    console.log('🚀 Updating user...');
+    const url = `${API_BASE_URL}/api/users/${id}`;
+    console.log('  - URL:', url);
+    
+    const headers = getAuthHeaders();
+    
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(userData),
+      });
+      
+      console.log('  - Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('  - Error response:', errorText);
+        throw new Error(`Failed to update user: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('  - Success! User updated');
+      return data;
+    } catch (error) {
+      console.error('  - Error:', error);
+      throw error;
+    }
   },
 };

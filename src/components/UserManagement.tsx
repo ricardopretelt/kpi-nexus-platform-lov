@@ -1,7 +1,30 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { UserPlus, Mail, Shield, Users } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog';
+import { useToast } from '../hooks/use-toast';
+import { ActionSelectionModal } from './ActionSelectionModal';
+import { UserEditModal } from './UserEditModal';
 
 // Smart API URL detection
 const getApiBaseUrl = () => {
@@ -29,26 +52,6 @@ const getApiBaseUrl = () => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Mail, Shield, Users } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle 
-} from '@/components/ui/alert-dialog';
 
 const UserManagement = () => {
   const { users, inviteUser, refreshUsers, user: currentUser, logoutAndRedirect } = useAuth();
@@ -80,6 +83,10 @@ const UserManagement = () => {
   });
 
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  
+  // Add these state variables here
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
 
   // Add effect to refresh users when component mounts
   useEffect(() => {
@@ -208,6 +215,39 @@ const UserManagement = () => {
     data_specialist: users.filter(u => u.role === 'data_specialist').length,
     business_specialist: users.filter(u => u.role === 'business_specialist').length,
   };
+
+  const { toast } = useToast();
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  const handleEditClick = (user: any) => {
+    setSelectedUser(user);
+    setShowActionModal(true);
+  };
+
+  const handleModify = () => {
+    setShowActionModal(false);
+    setShowEditModal(true);
+  };
+
+  const handleEditClose = () => {
+    setShowEditModal(false);
+    setSelectedUser(null);
+  };
+
+  const handleActionModalClose = () => {
+    setShowActionModal(false);
+    setSelectedUser(null);
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.username.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -354,6 +394,27 @@ const UserManagement = () => {
         </Card>
       </div>
 
+      {/* Add search and filter UI above the Users Table */}
+      <div className="flex gap-4 mb-4">
+        <Input
+          placeholder="Search users..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+        />
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="data_specialist">Data Specialist</SelectItem>
+            <SelectItem value="business_specialist">Business Specialist</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Users Table */}
       <Card>
         <CardHeader>
@@ -402,7 +463,11 @@ const UserManagement = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEditClick(user)}
+                    >
                       Edit
                     </Button>
                   </TableCell>
@@ -487,6 +552,23 @@ const UserManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Action Selection Modal */}
+      <ActionSelectionModal
+        isOpen={showActionModal}
+        onClose={handleActionModalClose}
+        onModify={handleModify}
+        userName={selectedUser?.full_name || ''}
+      />
+
+      {/* User Edit Modal */}
+      {selectedUser && (
+        <UserEditModal
+          isOpen={showEditModal}
+          onClose={handleEditClose}
+          user={selectedUser}
+        />
+      )}
     </div>
   );
 };
