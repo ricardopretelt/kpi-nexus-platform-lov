@@ -3,7 +3,32 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Smart API URL detection
+const getApiBaseUrl = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Auto-detect environment
+  const hostname = window.location.hostname;
+  const port = window.location.port;
+  
+  // If running on localhost (development)
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:3001';
+  }
+  
+  // If running on server (production)
+  if (hostname === '18.217.206.5' || hostname.includes('ip-')) {
+    return `http://${hostname}:3001`;
+  }
+  
+  // Fallback to current hostname
+  return `http://${hostname}:3001`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
