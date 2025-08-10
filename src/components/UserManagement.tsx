@@ -84,10 +84,6 @@ const UserManagement = () => {
 
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   
-  // Add these state variables here
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
@@ -323,7 +319,7 @@ const UserManagement = () => {
 
   const handleEditClick = (user: any) => {
     setSelectedUser(user);
-    setShowActionModal(true);
+    setShowEditModal(true);
   };
 
   const handleModify = () => {
@@ -373,14 +369,6 @@ const UserManagement = () => {
     // User has deactivated themselves, redirect to login
     logoutAndRedirect('/'); // Changed from '/login' to '/' since login might be handled differently
   };
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.username.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
 
   return (
     <div className="p-6 space-y-6">
@@ -485,85 +473,54 @@ const UserManagement = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
-              </div>
-              <Users className="h-8 w-8 text-blue-600" />
+        <div className="p-6 border rounded-lg bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Users</p>
+              <p className="text-2xl font-bold text-gray-900">{users.length}</p>
             </div>
-          </CardContent>
-        </Card>
+            <Users className="h-8 w-8 text-blue-600" />
+          </div>
+        </div>
         
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Admins</p>
-                <p className="text-2xl font-bold text-gray-900">{roleStats.admin}</p>
-              </div>
-              <Shield className="h-8 w-8 text-red-600" />
+        <div className="p-6 border rounded-lg bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Admins</p>
+              <p className="text-2xl font-bold text-gray-900">{roleStats.admin}</p>
             </div>
-          </CardContent>
-        </Card>
+            <Shield className="h-8 w-8 text-red-600" />
+          </div>
+        </div>
         
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Data Specialists</p>
-                <p className="text-2xl font-bold text-gray-900">{roleStats.data_specialist}</p>
-              </div>
-              <Shield className="h-8 w-8 text-blue-600" />
+        <div className="p-6 border rounded-lg bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Data Specialists</p>
+              <p className="text-2xl font-bold text-gray-900">{roleStats.data_specialist}</p>
             </div>
-          </CardContent>
-        </Card>
+            <Shield className="h-8 w-8 text-blue-600" />
+          </div>
+        </div>
         
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Business Specialists</p>
-                <p className="text-2xl font-bold text-gray-900">{roleStats.business_specialist}</p>
-              </div>
-              <Shield className="h-8 w-8 text-green-600" />
+        <div className="p-6 border rounded-lg bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Business Specialists</p>
+              <p className="text-2xl font-bold text-gray-900">{roleStats.business_specialist}</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Add search and filter UI above the Users Table */}
-      <div className="flex gap-4 mb-4">
-        <Input
-          placeholder="Search users..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Filter by role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="data_specialist">Data Specialist</SelectItem>
-            <SelectItem value="business_specialist">Business Specialist</SelectItem>
-          </SelectContent>
-        </Select>
+            <Shield className="h-8 w-8 text-green-600" />
+          </div>
+        </div>
       </div>
 
       {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
-            Manage user accounts and their roles
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="border rounded-lg bg-white">
+        <div className="px-6 py-4 border-b bg-gray-50">
+          <h3 className="text-lg font-semibold text-gray-900">All Users</h3>
+          <p className="text-sm text-gray-600">Manage user accounts and their roles</p>
+        </div>
+        <div className="p-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -581,9 +538,9 @@ const UserManagement = () => {
                   <TableCell className="font-medium">{user.full_name}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge className={getRoleColor(user.role)}>
+                    <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getRoleColor(user.role)}`}>
                       {getRoleLabel(user.role)}
-                    </Badge>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
@@ -613,61 +570,7 @@ const UserManagement = () => {
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      {/* Role Descriptions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <Shield className="mr-2 h-5 w-5 text-red-600" />
-              Admin
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Manage user accounts</li>
-              <li>• Full platform access</li>
-              <li>• Grant/revoke permissions</li>
-              <li>• System administration</li>
-            </ul>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <Shield className="mr-2 h-5 w-5 text-blue-600" />
-              Data Specialist
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Access technical documentation</li>
-              <li>• Edit KPI definitions</li>
-              <li>• Manage SQL queries</li>
-              <li>• Maintain data models</li>
-            </ul>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
-              <Shield className="mr-2 h-5 w-5 text-green-600" />
-              Business Specialist
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Access business KPIs</li>
-              <li>• Approve KPI changes</li>
-              <li>• Review documentation</li>
-              <li>• Business validation</li>
-            </ul>
-          </CardContent>
-        </Card>
+        </div>
       </div>
 
       {/* Admin Toggle Confirmation Dialog */}
@@ -690,14 +593,6 @@ const UserManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Action Selection Modal */}
-      <ActionSelectionModal
-        isOpen={showActionModal}
-        onClose={handleActionModalClose}
-        onModify={handleModify}
-        userName={selectedUser?.full_name || ''}
-      />
 
       {/* User Edit Modal */}
       {selectedUser && (
