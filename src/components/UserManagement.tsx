@@ -14,10 +14,28 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserPlus, Mail, Shield, Users } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog';
 
 const UserManagement = () => {
-  const { users, inviteUser, refreshUsers } = useAuth();
+  const { users, inviteUser, refreshUsers, user: currentUser, logoutAndRedirect } = useAuth();
   const [updatingAdmin, setUpdatingAdmin] = useState<string | null>(null);
+  
+  // Confirmation dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState<{
+    userId: string;
+    currentStatus: boolean;
+    userName: string;
+  } | null>(null);
 
   // Add debugging
   console.log('UserManagement - users:', users);
@@ -60,24 +78,80 @@ const UserManagement = () => {
     }
   };
 
-  const handleAdminToggle = async (userId: string, currentAdminStatus: boolean) => {
+  // New confirmation dialog handler for admin toggle
+  const handleAdminToggleClick = (userId: string, currentAdminStatus: boolean, userName: string) => {
+    console.log('Admin toggle clicked:', { userId, currentAdminStatus, userName });
+    setPendingToggle({
+      userId,
+      currentStatus: currentAdminStatus,
+      userName
+    });
+    setShowConfirmDialog(true);
+  };
+
+  // Handle confirmation dialog actions
+  const handleConfirmToggle = async () => {
+    if (!pendingToggle) return;
+    
+    const { userId, currentStatus } = pendingToggle;
+    console.log('Confirming toggle:', { userId, currentStatus });
+    
+    setShowConfirmDialog(false);
+    setPendingToggle(null);
+    
+    // Check if current user is demoting themselves
+    const isSelfDemotion = userId === currentUser?.id && currentStatus === true;
+    console.log('Is self demotion:', isSelfDemotion);
+    
+    await handleAdminToggle(userId, currentStatus, isSelfDemotion);
+  };
+
+  const handleCancelToggle = () => {
+    console.log('Cancelling toggle');
+    setShowConfirmDialog(false);
+    setPendingToggle(null);
+  };
+
+  const handleAdminToggle = async (userId: string, currentAdminStatus: boolean, isSelfDemotion: boolean = false) => {
+    console.log('Executing admin toggle:', { userId, currentAdminStatus, isSelfDemotion });
     setUpdatingAdmin(userId);
+    
     try {
+      const newAdminStatus = !currentAdminStatus;
+      console.log('Sending request to change is_admin from', currentAdminStatus, 'to', newAdminStatus);
+      
       const response = await fetch(`${API_BASE_URL}/api/users/${userId}/admin`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ is_admin: !currentAdminStatus }),
+        body: JSON.stringify({ is_admin: newAdminStatus }),
       });
 
+      console.log('API response status:', response.status);
+      console.log('API response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to update admin status');
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`Failed to update admin status: ${response.status} ${errorText}`);
       }
 
+      const responseData = await response.json();
+      console.log('API response data:', responseData);
+
       // Refresh the users list after successful update
+      console.log('Refreshing users list...');
       await refreshUsers();
+      console.log('Users list refreshed');
+
+      // Handle self-demotion redirect
+      if (isSelfDemotion) {
+        console.log('User demoted themselves, logging out and redirecting...');
+        // Use the new logoutAndRedirect function to redirect to home page
+        logoutAndRedirect('/');
+      }
     } catch (error) {
       console.error('Failed to toggle admin status:', error);
       // You might want to add a toast notification here
@@ -290,7 +364,7 @@ const UserManagement = () => {
                       <Switch
                         checked={user.is_admin === true}
                         disabled={updatingAdmin === user.id}
-                        onCheckedChange={() => handleAdminToggle(user.id, user.is_admin === true)}
+                        onCheckedChange={() => handleAdminToggleClick(user.id, user.is_admin === true, user.full_name)}
                       />
                       {updatingAdmin === user.id && (
                         <span className="w-4 h-4 border-2 border-t-transparent border-blue-600 rounded-full animate-spin" />
@@ -367,6 +441,27 @@ const UserManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Admin Toggle Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Admin Status Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change the status of {pendingToggle?.userName}?
+              {pendingToggle && pendingToggle.userId === currentUser?.id && pendingToggle.currentStatus === true && (
+                <span className="block mt-2 text-red-600 font-medium">
+                  ⚠️ Warning: You are removing your own admin access. You will be redirected to the home page and lose access to user management.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelToggle}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmToggle}>Accept</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
