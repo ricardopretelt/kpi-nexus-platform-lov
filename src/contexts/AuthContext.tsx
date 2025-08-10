@@ -16,6 +16,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  logoutAndRedirect: (redirectTo?: string) => void; // New function for logout with redirect
   register: (username: string, email: string, password: string, fullName: string, role?: User['role']) => Promise<boolean>;
   users: User[];
   inviteUser: (email: string, name: string, role: User['role']) => Promise<{ success: boolean; error?: string; password?: string }>;
@@ -226,6 +227,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('authToken');
   };
 
+  // New function for logout with redirect capability
+  const logoutAndRedirect = (redirectTo: string = '/') => {
+    // First perform the logout
+    logout();
+    
+    // Then redirect using window.location for immediate effect
+    // This ensures the user is redirected even if React state updates are pending
+    window.location.href = redirectTo;
+  };
+
   const generatePassword = () => {
     const length = 12;
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -378,6 +389,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user, 
       login, 
       logout, 
+      logoutAndRedirect, // Add the new function
       register, 
       users, 
       inviteUser, 

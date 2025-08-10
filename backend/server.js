@@ -20,7 +20,7 @@ app.use(cors({
     'http://18.217.206.5:3000'
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Added PATCH method
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -38,6 +38,16 @@ app.use((req, res, next) => {
     console.log('Headers:', req.headers);
     console.log('Body:', req.body);
   }
+  
+  // Add specific debugging for admin toggle endpoint
+  if (req.path.includes('/api/users/') && req.path.includes('/admin')) {
+    console.log('=== ADMIN TOGGLE REQUEST ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+  }
+  
   next();
 });
 
@@ -419,6 +429,56 @@ app.get('/api/users', authenticateToken, async (req, res) => {
     res.json(users);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add new PATCH endpoint for updating user admin status
+app.patch('/api/users/:id/admin', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_admin } = req.body;
+    
+    console.log(`Updating user ${id} admin status to:`, is_admin);
+    
+    // Validate input
+    if (typeof is_admin !== 'boolean') {
+      return res.status(400).json({ error: 'is_admin must be a boolean value' });
+    }
+    
+    // Check if user exists
+    const userCheck = await pool.query('SELECT id, is_admin FROM users WHERE id = $1', [id]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log(`User ${id} current admin status:`, userCheck.rows[0].is_admin);
+    
+    // Update the user's admin status
+    await pool.query('UPDATE users SET is_admin = $1 WHERE id = $2', [is_admin, id]);
+    
+    console.log(`Successfully updated user ${id} admin status to:`, is_admin);
+    
+    // Return the updated user data
+    const updatedUser = await pool.query(
+      'SELECT id, username, email, full_name, role, is_admin FROM users WHERE id = $1',
+      [id]
+    );
+    
+    // Transform the data to ensure proper boolean conversion
+    const user = updatedUser.rows[0];
+    const transformedUser = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role,
+      is_admin: user.is_admin === true || user.is_admin === 't'
+    };
+    
+    res.json(transformedUser);
+  } catch (err) {
+    console.error('Error updating user admin status:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
