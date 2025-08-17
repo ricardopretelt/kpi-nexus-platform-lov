@@ -219,37 +219,16 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
             </CardContent>
           </Card>
 
-          {/* Dashboard Preview */}
-          {kpi.dashboardPreview && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Image className="mr-2 h-5 w-5" />
-                  Dashboard Preview
-                </CardTitle>
-                <CardDescription>
-                  Visual representation from BI dashboard
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-gray-100 rounded-lg p-4">
-                  <img
-                    src={kpi.dashboardPreview}
-                    alt="Dashboard Preview"
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Additional Blocks */}
           {kpi.additionalBlocks && kpi.additionalBlocks.length > 0 && (
             <div className="space-y-4">
               {kpi.additionalBlocks.map((block, index) => (
                 <Card key={block.id}>
                   <CardHeader>
-                    <CardTitle className="text-lg">
+                    <CardTitle className="text-lg flex items-center">
+                      {block.endContent === 'image' && (
+                        <Image className="mr-2 h-5 w-5" />
+                      )}
                       {block.title || `Additional Information ${index + 1}`}
                     </CardTitle>
                     {block.subtitle && (
@@ -278,7 +257,15 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
                             src={block.imageUrl}
                             alt="Additional content"
                             className="w-full h-48 object-cover rounded-lg"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
                           />
+                          <div className="hidden text-center text-gray-500 py-8">
+                            <Image className="mx-auto h-12 w-12 mb-2 text-gray-400" />
+                            <p>Image preview not available</p>
+                          </div>
                         </div>
                       </div>
                     )}

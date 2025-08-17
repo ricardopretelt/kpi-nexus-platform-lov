@@ -33,7 +33,17 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     businessSpecialist: ''
   });
   
-  const [additionalBlocks, setAdditionalBlocks] = useState<KPIBlock[]>([]);
+  const [additionalBlocks, setAdditionalBlocks] = useState<KPIBlock[]>([
+    // Default dashboard preview block (no default text)
+    {
+      id: 'default-dashboard-preview',
+      title: '',
+      subtitle: '',
+      text: '',
+      endContent: 'image' as const,
+      imageUrl: ''
+    }
+  ]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
