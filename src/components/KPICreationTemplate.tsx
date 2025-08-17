@@ -27,7 +27,7 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     name: '',
     definition: '',
     sqlQuery: '',
-    topics: [] as string[],
+    topics: [] as number[], // Changed from string[] to number[]
     status: 'active' as 'active' | 'inactive',
     dataSpecialist: '',
     businessSpecialist: ''
@@ -83,12 +83,12 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleTopicToggle = (topicName: string) => {
+  const handleTopicToggle = (topicId: number) => { // Changed from topicName: string
     setFormData(prev => ({
       ...prev,
-      topics: prev.topics.includes(topicName)
-        ? prev.topics.filter(t => t !== topicName)
-        : [...prev.topics, topicName]
+      topics: prev.topics.includes(topicId)
+        ? prev.topics.filter(t => t !== topicId)
+        : [...prev.topics, topicId]
     }));
   };
 
@@ -401,8 +401,8 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
                       <input
                         type="checkbox"
                         id={`topic-${topic.id}`}
-                        checked={formData.topics.includes(topic.name)}
-                        onChange={() => handleTopicToggle(topic.name)}
+                        checked={formData.topics.includes(topic.id)} // Changed from topic.name
+                        onChange={() => handleTopicToggle(topic.id)} // Changed from topic.name
                         className="rounded border-gray-300"
                       />
                       <Label htmlFor={`topic-${topic.id}`} className="text-sm">

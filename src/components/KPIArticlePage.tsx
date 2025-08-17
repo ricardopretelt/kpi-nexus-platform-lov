@@ -9,6 +9,9 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { KPI, KPIVersion } from '../types/kpi';
 import { Edit, Save, History, User, Clock, Database, Image, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { Topic } from '../services/api';
+import { api } from '../services/api';
 
 interface KPIArticlePageProps {
   kpi: KPI;
@@ -21,6 +24,28 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
   const [editDefinition, setEditDefinition] = useState(kpi.definition);
   const [editSqlQuery, setEditSqlQuery] = useState(kpi.sqlQuery);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [topics, setTopics] = useState<Topic[]>([]);
+
+  // Load topics on component mount
+  useEffect(() => {
+    const loadTopics = async () => {
+      try {
+        const topicsData = await api.getTopics();
+        setTopics(topicsData);
+      } catch (error) {
+        console.error('Failed to load topics:', error);
+      }
+    };
+    loadTopics();
+  }, []);
+
+  // Helper function to get topic names from IDs
+  const getTopicNames = (topicIds: number[]): string[] => {
+    return topicIds.map(id => {
+      const topic = topics.find(t => t.id === id);
+      return topic ? topic.name : `Unknown Topic ${id}`;
+    });
+  };
 
   const canEdit = () => {
     if (!user) return false;
@@ -73,7 +98,7 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
               {kpi.status}
             </Badge>
             <span className="text-sm text-gray-600">
-              {kpi.topics && kpi.topics.length > 0 ? kpi.topics.join(', ') : 'No topics'}
+              {kpi.topics && kpi.topics.length > 0 ? getTopicNames(kpi.topics).join(', ') : 'No topics'}
             </span>
             <span className="text-sm text-gray-600">
               Last updated: {formatDate(kpi.lastUpdated)}
@@ -324,14 +349,14 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
                 <span className="text-sm text-gray-600">Topics</span>
                 <div className="flex flex-wrap gap-1 justify-end">
                   {kpi.topics && kpi.topics.length > 0 ? (
-                    kpi.topics.map((topic, index) => (
+                    getTopicNames(kpi.topics).map((topicName, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
-                        {topic}
+                        {topicName}
                       </Badge>
                     ))
                   ) : (
-                    <Badge variant="outline" className="text-xs">
-                      No topics
+                    <Badge variant="outline" className="text-xs text-gray-400">
+                      No topics assigned
                     </Badge>
                   )}
                 </div>

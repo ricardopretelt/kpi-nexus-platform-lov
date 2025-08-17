@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { KPI } from '../types/kpi';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Clock, User } from 'lucide-react';
+import { Topic } from '../services/api';
+import { api } from '../services/api';
 
 interface TopicsPageProps {
   topic: string;
@@ -15,9 +17,24 @@ interface TopicsPageProps {
 
 const TopicsPage = ({ topic, kpis, onKPISelect }: TopicsPageProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [topicDetails, setTopicDetails] = useState<Topic | null>(null);
   
+  // Load topic details to get the name
+  useEffect(() => {
+    const loadTopicDetails = async () => {
+      try {
+        const topicsData = await api.getTopics();
+        const topicData = topicsData.find(t => t.id === parseInt(topic));
+        setTopicDetails(topicData || null);
+      } catch (error) {
+        console.error('Failed to load topic details:', error);
+      }
+    };
+    loadTopicDetails();
+  }, [topic]);
+
   const filteredKPIs = kpis
-    .filter(kpi => kpi.topics && kpi.topics.includes(topic))
+    .filter(kpi => kpi.topics && kpi.topics.includes(parseInt(topic)))
     .filter(kpi => 
       kpi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       kpi.definition.toLowerCase().includes(searchTerm.toLowerCase())
@@ -37,7 +54,9 @@ const TopicsPage = ({ topic, kpis, onKPISelect }: TopicsPageProps) => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{topic}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {topicDetails ? topicDetails.name : `Topic ${topic}`}
+            </h1>
             <p className="text-gray-600">
               {filteredKPIs.length} KPI{filteredKPIs.length !== 1 ? 's' : ''} in this category
             </p>

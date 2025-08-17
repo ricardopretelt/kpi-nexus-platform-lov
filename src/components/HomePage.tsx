@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { KPI } from '../types/kpi';
 import { Topic } from '../services/api';
 import { Clock, TrendingUp, Users, Database, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 interface HomePageProps {
   kpis: KPI[];
@@ -21,7 +23,7 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
   const getTopicStats = () => {
     return topics.map(topic => ({
       ...topic,
-      count: kpis.filter(kpi => kpi.topics && kpi.topics.includes(topic.name)).length
+      count: kpis.filter(kpi => kpi.topics && kpi.topics.includes(topic.id)).length
     }));
   };
 
@@ -30,6 +32,14 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
       year: 'numeric',
       month: 'short',
       day: 'numeric'
+    });
+  };
+
+  // Helper function to get topic names from IDs
+  const getTopicNames = (topicIds: number[]): string[] => {
+    return topicIds.map(id => {
+      const topic = topics.find(t => t.id === id);
+      return topic ? topic.name : `Unknown Topic ${id}`;
     });
   };
 
@@ -118,7 +128,7 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
               <div
                 key={topic.name}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => onTopicSelect(topic.name)}
+                onClick={() => onTopicSelect(topic.id.toString())}
               >
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 ${topic.color} rounded-lg flex items-center justify-center text-white text-lg`}>
@@ -154,7 +164,7 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
                   <div className="space-y-1">
                     <h3 className="font-medium text-gray-900">{kpi.name}</h3>
                     <p className="text-sm text-gray-600">
-                      {kpi.topics && kpi.topics.length > 0 ? kpi.topics.join(', ') : 'No topics'}
+                      {kpi.topics && kpi.topics.length > 0 ? getTopicNames(kpi.topics).join(', ') : 'No topics'}
                     </p>
                     <div className="flex items-center space-x-2">
                       <Clock className="h-3 w-3 text-gray-400" />
