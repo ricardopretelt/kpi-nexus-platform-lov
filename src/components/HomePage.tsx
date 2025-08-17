@@ -3,16 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { KPI } from '../types/kpi';
 import { Topic } from '../services/api';
-import { Clock, TrendingUp, Users, Database } from 'lucide-react';
+import { Clock, TrendingUp, Users, Database, Plus } from 'lucide-react';
 
 interface HomePageProps {
   kpis: KPI[];
   topics: Topic[];
   onTopicSelect: (topic: string) => void;
   onKPISelect: (kpi: KPI) => void;
+  onAddKPI: () => void; // New prop
 }
 
-const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect }: HomePageProps) => {
+const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePageProps) => {
   const recentlyUpdatedKPIs = kpis
     .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
     .slice(0, 3);
@@ -20,7 +21,7 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect }: HomePageProps) =
   const getTopicStats = () => {
     return topics.map(topic => ({
       ...topic,
-      count: kpis.filter(kpi => kpi.topic === topic.name).length
+      count: kpis.filter(kpi => kpi.topics && kpi.topics.includes(topic.name)).length
     }));
   };
 
@@ -34,12 +35,20 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect }: HomePageProps) =
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">BI Documentation Dashboard</h1>
-        <p className="text-gray-600">
-          Welcome to the Telecom BI Documentation platform. Manage KPIs, track performance metrics, and maintain technical documentation.
-        </p>
+      {/* Header with Add KPI Button */}
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">BI Documentation Dashboard</h1>
+          <p className="text-gray-600">
+            Welcome to the Telecom BI Documentation platform. Manage KPIs, track performance metrics, and maintain technical documentation.
+          </p>
+        </div>
+        
+        {/* Add KPI Button - Top Right (opposite side of sidebar) */}
+        <Button onClick={onAddKPI} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="mr-2 h-4 w-4" />
+          Add KPI
+        </Button>
       </div>
 
       {/* Stats Overview */}
@@ -144,7 +153,9 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect }: HomePageProps) =
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <h3 className="font-medium text-gray-900">{kpi.name}</h3>
-                    <p className="text-sm text-gray-600">{kpi.topic}</p>
+                    <p className="text-sm text-gray-600">
+                      {kpi.topics && kpi.topics.length > 0 ? kpi.topics.join(', ') : 'No topics'}
+                    </p>
                     <div className="flex items-center space-x-2">
                       <Clock className="h-3 w-3 text-gray-400" />
                       <span className="text-xs text-gray-500">

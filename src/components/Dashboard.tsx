@@ -4,11 +4,13 @@ import Sidebar from './Sidebar';
 import HomePage from './HomePage';
 import TopicsPage from './TopicsPage';
 import KPIArticlePage from './KPIArticlePage';
+import KPICreationTemplate from './KPICreationTemplate';
 import UserManagement from './UserManagement';
 import { KPI } from '../types/kpi';
 import { api, Topic } from '../services/api';
+import { toast } from 'sonner';
 
-type Page = 'home' | 'topics' | 'kpi' | 'users';
+type Page = 'home' | 'topics' | 'kpi' | 'users' | 'create-kpi';
 
 const Dashboard = () => {
   const { user, hasAdminAccess, onUserUpdate } = useAuth();
@@ -75,6 +77,23 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddKPI = () => {
+    setCurrentPage('create-kpi');
+  };
+
+  const handleKPICreationSuccess = (newKPI: KPI) => {
+    // Add the new KPI to the list
+    setKpis(prev => [newKPI, ...prev]);
+    
+    // Show success message and redirect to home
+    toast.success('KPI created successfully!');
+    setCurrentPage('home');
+  };
+
+  const handleKPICreationCancel = () => {
+    setCurrentPage('home');
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -96,7 +115,8 @@ const Dashboard = () => {
             kpis={kpis} 
             topics={topics}
             onTopicSelect={handleTopicSelect} 
-            onKPISelect={handleKPISelect} 
+            onKPISelect={handleKPISelect}
+            onAddKPI={handleAddKPI}
           />
         )}
         {currentPage === 'topics' && selectedTopic && (
@@ -104,6 +124,12 @@ const Dashboard = () => {
         )}
         {currentPage === 'kpi' && selectedKPI && (
           <KPIArticlePage kpi={selectedKPI} onUpdate={handleKPIUpdate} />
+        )}
+        {currentPage === 'create-kpi' && (
+          <KPICreationTemplate 
+            onCancel={handleKPICreationCancel}
+            onSuccess={handleKPICreationSuccess}
+          />
         )}
         {currentPage === 'users' && hasAdminAccess(user) && (
           <UserManagement />

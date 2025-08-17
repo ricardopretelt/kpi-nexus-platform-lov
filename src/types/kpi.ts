@@ -4,13 +4,14 @@ export interface KPI {
   name: string;
   definition: string;
   sqlQuery: string;
-  topic: string;
+  topics: string[]; // Changed from 'topic: string'
   dataSpecialist: string;
   businessSpecialist: string;
   dashboardPreview?: string;
   lastUpdated: string;
   versions: KPIVersion[];
-  status: 'active' | 'draft' | 'archived';
+  status: 'active' | 'inactive';
+  additionalBlocks?: KPIBlock[];
 }
 
 export interface KPIVersion {
@@ -21,4 +22,15 @@ export interface KPIVersion {
   updatedBy: string;
   updatedAt: string;
   changes: string;
+}
+
+// New interface for additional blocks
+export interface KPIBlock {
+  id: string;
+  title?: string;
+  subtitle?: string;
+  text?: string;
+  endContent: 'code' | 'image' | 'none';
+  codeContent?: string;
+  imageUrl?: string;
 }

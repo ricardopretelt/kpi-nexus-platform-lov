@@ -17,7 +17,7 @@ const TopicsPage = ({ topic, kpis, onKPISelect }: TopicsPageProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   
   const filteredKPIs = kpis
-    .filter(kpi => kpi.topic === topic)
+    .filter(kpi => kpi.topics && kpi.topics.includes(topic))
     .filter(kpi => 
       kpi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       kpi.definition.toLowerCase().includes(searchTerm.toLowerCase())
