@@ -414,7 +414,6 @@ app.get('/api/kpis', authenticateToken, async (req, res) => {
         k.topics,
         u1.full_name as "dataSpecialist",
         u2.full_name as "businessSpecialist",
-        k.dashboard_preview as "dashboardPreview",
         k.updated_at as "lastUpdated",
         k.status,
         k.additional_blocks as "additionalBlocks",
@@ -472,7 +471,6 @@ app.get('/api/kpis/:id', authenticateToken, async (req, res) => {
         k.topics,
         u1.full_name as "dataSpecialist",
         u2.full_name as "businessSpecialist",
-        k.dashboard_preview as "dashboardPreview",
         k.updated_at as "lastUpdated",
         k.status,
         k.additional_blocks as "additionalBlocks",
@@ -609,7 +607,7 @@ app.patch('/api/users/:id/admin', authenticateToken, async (req, res) => {
 // POST Routes (existing) - now protected with authentication
 app.post('/api/kpis', authenticateToken, async (req, res) => {
   try {
-    const { name, definition, sqlQuery, topics, dataSpecialist, businessSpecialist, dashboardPreview, status, additionalBlocks } = req.body;
+    const { name, definition, sqlQuery, topics, dataSpecialist, businessSpecialist, status, additionalBlocks } = req.body;
     
     // Validate required fields
     if (!name || !definition || !sqlQuery || !topics || !Array.isArray(topics) || topics.length === 0) {
@@ -641,12 +639,12 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
       businessSpecialistId = businessSpecialistResult.rows[0].id;
     }
     
-    // Insert KPI with new structure
+    // Insert KPI with new structure (removed dashboard_preview column)
     const result = await pool.query(`
-      INSERT INTO kpis (name, definition, sql_query, topics, data_specialist_id, business_specialist_id, dashboard_preview, status, additional_blocks)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO kpis (name, definition, sql_query, topics, data_specialist_id, business_specialist_id, status, additional_blocks)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id
-    `, [name, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, dashboardPreview, status || 'active', additionalBlocks ? JSON.stringify(additionalBlocks) : null]);
+    `, [name, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, status || 'active', additionalBlocks ? JSON.stringify(additionalBlocks) : null]);
     
     // Create initial version
     await pool.query(`

@@ -7,7 +7,6 @@ export interface KPI {
   topics: string[]; // Changed from 'topic: string'
   dataSpecialist: string;
   businessSpecialist: string;
-  dashboardPreview?: string;
   lastUpdated: string;
   versions: KPIVersion[];
   status: 'active' | 'inactive';
