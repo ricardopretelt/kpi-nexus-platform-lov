@@ -25,8 +25,8 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
   const canEdit = () => {
     if (!user) return false;
     if (user.role === 'admin') return true;
-    if (user.role === 'data_specialist' && user.name === kpi.dataSpecialist) return true;
-    if (user.role === 'business_specialist' && user.name === kpi.businessSpecialist) return true;
+    if (user.role === 'data_specialist' && user.full_name === kpi.dataSpecialist) return true;
+    if (user.role === 'business_specialist' && user.full_name === kpi.businessSpecialist) return true;
     return false;
   };
 
@@ -36,7 +36,7 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
       version: kpi.versions.length + 1,
       definition: editDefinition,
       sqlQuery: editSqlQuery,
-      updatedBy: user?.name || 'Unknown',
+      updatedBy: user?.full_name || 'Unknown',
       updatedAt: new Date().toISOString().split('T')[0],
       changes: 'Updated definition and SQL query'
     };
@@ -72,7 +72,9 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
             <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
               {kpi.status}
             </Badge>
-            <span className="text-sm text-gray-600">{kpi.topic}</span>
+            <span className="text-sm text-gray-600">
+              {kpi.topics && kpi.topics.length > 0 ? kpi.topics.join(', ') : 'No topics'}
+            </span>
             <span className="text-sm text-gray-600">
               Last updated: {formatDate(kpi.lastUpdated)}
             </span>
@@ -240,6 +242,51 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
               </CardContent>
             </Card>
           )}
+
+          {/* Additional Blocks */}
+          {kpi.additionalBlocks && kpi.additionalBlocks.length > 0 && (
+            <div className="space-y-4">
+              {kpi.additionalBlocks.map((block, index) => (
+                <Card key={block.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {block.title || `Additional Information ${index + 1}`}
+                    </CardTitle>
+                    {block.subtitle && (
+                      <CardDescription>{block.subtitle}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {block.text && (
+                      <p className="text-gray-700 leading-relaxed">{block.text}</p>
+                    )}
+                    
+                    {block.endContent === 'code' && block.codeContent && (
+                      <div>
+                        <h4 className="font-medium mb-2">Code</h4>
+                        <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
+                          {block.codeContent}
+                        </pre>
+                      </div>
+                    )}
+                    
+                    {block.endContent === 'image' && block.imageUrl && (
+                      <div>
+                        <h4 className="font-medium mb-2">Image</h4>
+                        <div className="bg-gray-100 rounded-lg p-4">
+                          <img
+                            src={block.imageUrl}
+                            alt="Additional content"
+                            className="w-full h-48 object-cover rounded-lg"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -286,9 +333,21 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Topic</span>
-                <Badge variant="outline">{kpi.topic}</Badge>
+              <div className="flex justify-between items-start">
+                <span className="text-sm text-gray-600">Topics</span>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {kpi.topics && kpi.topics.length > 0 ? (
+                    kpi.topics.map((topic, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {topic}
+                      </Badge>
+                    ))
+                  ) : (
+                    <Badge variant="outline" className="text-xs">
+                      No topics
+                    </Badge>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-between">

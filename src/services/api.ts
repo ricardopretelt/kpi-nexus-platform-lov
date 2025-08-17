@@ -1,4 +1,5 @@
 import { User } from '../contexts/AuthContext';
+import { KPI, KPIBlock } from '../types/kpi';
 
 const API_BASE_URL = (() => {
   console.log('🔍 Environment check:');
@@ -44,30 +45,6 @@ const getAuthHeaders = () => {
   return headers;
 };
 
-export interface KPI {
-  id: string;
-  name: string;
-  definition: string;
-  sqlQuery: string;
-  topic: string;
-  dataSpecialist: string;
-  businessSpecialist: string;
-  dashboardPreview?: string;
-  lastUpdated: string;
-  status: 'active' | 'draft' | 'archived';
-  versions: KPIVersion[];
-}
-
-export interface KPIVersion {
-  id: string;
-  version: number;
-  definition: string;
-  sqlQuery: string;
-  updatedBy: string;
-  updatedAt: string;
-  changes: string;
-}
-
 export interface Topic {
   id: number;
   name: string;
@@ -99,6 +76,35 @@ export const api = {
       
       const data = await response.json();
       console.log('  - Success! KPIs count:', data.length);
+      return data;
+    } catch (error) {
+      console.error('  - Fetch error:', error);
+      throw error;
+    }
+  },
+
+  // Add new method to get a single KPI by ID
+  async getKPI(id: string): Promise<KPI> {
+    console.log('🚀 Fetching KPI...');
+    const url = `${API_BASE_URL}/api/kpis/${id}`;
+    console.log('  - URL:', url);
+    
+    const headers = getAuthHeaders();
+    
+    try {
+      const response = await fetch(url, { headers });
+      
+      console.log('  - Response status:', response.status);
+      console.log('  - Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('  - Error response:', errorText);
+        throw new Error(`Failed to fetch KPI: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('  - Success! KPI fetched');
       return data;
     } catch (error) {
       console.error('  - Fetch error:', error);
