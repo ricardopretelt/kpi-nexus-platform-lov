@@ -4,9 +4,10 @@ export interface KPI {
   name: string;
   definition: string;
   sqlQuery: string;
-  topics: string[]; // Changed from 'topic: string'
+  topics: number[]; // Changed from string[] to number[]
   dataSpecialist: string;
   businessSpecialist: string;
+  dashboardPreview?: string;
   lastUpdated: string;
   versions: KPIVersion[];
   status: 'active' | 'inactive';

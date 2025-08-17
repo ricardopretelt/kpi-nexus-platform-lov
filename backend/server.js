@@ -437,18 +437,18 @@ app.get('/api/kpis', authenticateToken, async (req, res) => {
       ORDER BY k.id
     `);
     
-    // Transform the data to ensure proper structure and backward compatibility
-    const transformedKPIs = result.rows.map(kpi => ({
-      ...kpi,
-      // Ensure topics is always an array
-      topics: Array.isArray(kpi.topics) ? kpi.topics : (kpi.topics ? [kpi.topics] : []),
-      // Add backward compatibility for topic (singular) - use first topic
-      topic: Array.isArray(kpi.topics) && kpi.topics.length > 0 ? kpi.topics[0] : '',
-      // Ensure additionalBlocks is always an array or undefined
-      additionalBlocks: kpi.additionalBlocks || undefined,
-      // Ensure versions is always an array
-      versions: Array.isArray(kpi.versions) ? kpi.versions : []
-    }));
+    // Transform the data - return topic IDs directly
+    const transformedKPIs = result.rows.map(kpi => {
+      return {
+        ...kpi,
+        // Return topic IDs directly (no conversion needed)
+        topics: Array.isArray(kpi.topics) ? kpi.topics : [],
+        // Ensure additionalBlocks is always an array or undefined
+        additionalBlocks: kpi.additionalBlocks || undefined,
+        // Ensure versions is always an array
+        versions: Array.isArray(kpi.versions) ? kpi.versions : []
+      };
+    });
     
     res.json(transformedKPIs);
   } catch (err) {
