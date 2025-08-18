@@ -12,6 +12,11 @@ import { Edit, Save, History, User, Clock, Database, Image, X } from 'lucide-rea
 import { useEffect } from 'react';
 import { Topic } from '../services/api';
 import { api } from '../services/api';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface KPIArticlePageProps {
   kpi: KPI;
@@ -23,6 +28,7 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editDefinition, setEditDefinition] = useState(kpi.definition);
   const [editSqlQuery, setEditSqlQuery] = useState(kpi.sqlQuery);
+  const [editChangeDescription, setEditChangeDescription] = useState(''); // New field
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [topics, setTopics] = useState<Topic[]>([]);
 
@@ -55,28 +61,43 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
     return false;
   };
 
-  const handleSave = () => {
-    const newVersion: KPIVersion = {
-      id: `v${kpi.versions.length + 1}`,
-      version: kpi.versions.length + 1,
-      definition: editDefinition,
-      sqlQuery: editSqlQuery,
-      updatedBy: user?.full_name || 'Unknown',
-      updatedAt: new Date().toISOString().split('T')[0],
-      changes: 'Updated definition and SQL query'
-    };
+  const handleSave = async () => {
+    try {
+      // Update the KPI with new version
+      await api.updateKPI(kpi.id, {
+        definition: editDefinition,
+        sqlQuery: editSqlQuery,
+        changeDescription: editChangeDescription || 'Updated definition and SQL query'
+      });
 
-    const updatedKPI: KPI = {
-      ...kpi,
-      definition: editDefinition,
-      sqlQuery: editSqlQuery,
-      lastUpdated: new Date().toISOString().split('T')[0],
-      versions: [...kpi.versions, newVersion]
-    };
+      // Create new version object for local state
+      const newVersion: KPIVersion = {
+        id: `v${kpi.versions.length + 1}`,
+        version: kpi.versions.length + 1,
+        definition: editDefinition,
+        sqlQuery: editSqlQuery,
+        updatedAt: new Date().toISOString().split('T')[0],
+        changes: editChangeDescription || 'Updated definition and SQL query',
+        dataSpecialist: kpi.dataSpecialist,
+        businessSpecialist: kpi.businessSpecialist
+      };
 
-    onUpdate(updatedKPI);
-    setIsEditing(false);
-    console.log('KPI updated:', updatedKPI);
+      const updatedKPI: KPI = {
+        ...kpi,
+        definition: editDefinition,
+        sqlQuery: editSqlQuery,
+        lastUpdated: new Date().toISOString().split('T')[0],
+        versions: [...kpi.versions, newVersion]
+      };
+
+      onUpdate(updatedKPI);
+      setIsEditing(false);
+      setEditChangeDescription(''); // Reset change description
+      console.log('KPI updated:', updatedKPI);
+    } catch (error) {
+      console.error('Error updating KPI:', error);
+      // Handle error appropriately
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -85,6 +106,19 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Helper function to format specialist names for display
+  const formatSpecialists = (dataSpecialist?: string, businessSpecialist?: string) => {
+    if (dataSpecialist && businessSpecialist) {
+      return `${dataSpecialist} and ${businessSpecialist}`;
+    } else if (dataSpecialist) {
+      return dataSpecialist;
+    } else if (businessSpecialist) {
+      return businessSpecialist;
+    } else {
+      return 'System';
+    }
   };
 
   return (
@@ -128,22 +162,22 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg">Version {version.version}</CardTitle>
                         <div className="text-sm text-gray-600">
-                          {formatDate(version.updatedAt)} by {version.updatedBy}
+                          {formatDate(version.updatedAt)} by {formatSpecialists(version.dataSpecialist, version.businessSpecialist)}
                         </div>
                       </div>
-                      <CardDescription>{version.changes}</CardDescription>
+                      <CardDescription className="break-words">{version.changes}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         <div>
                           <h4 className="font-medium mb-2">Definition</h4>
-                          <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                          <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg break-words whitespace-pre-wrap">
                             {version.definition}
                           </p>
                         </div>
                         <div>
                           <h4 className="font-medium mb-2">SQL Query</h4>
-                          <pre className="text-sm text-gray-700 bg-gray-900 text-green-400 p-3 rounded-lg overflow-x-auto">
+                          <pre className="text-sm text-gray-700 bg-gray-900 text-green-400 p-3 rounded-lg break-words whitespace-pre-wrap overflow-x-auto">
                             {version.sqlQuery}
                           </pre>
                         </div>
@@ -181,6 +215,7 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
                 setIsEditing(false);
                 setEditDefinition(kpi.definition);
                 setEditSqlQuery(kpi.sqlQuery);
+                setEditChangeDescription('');
               }}
               variant="outline"
               size="sm"
@@ -191,6 +226,72 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
           )}
         </div>
       </div>
+
+      {/* Edit Form */}
+      {isEditing && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit KPI</CardTitle>
+            <CardDescription>Update the definition and SQL query for this KPI</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="editDefinition">Definition</Label>
+              <Textarea
+                id="editDefinition"
+                value={editDefinition}
+                onChange={(e) => setEditDefinition(e.target.value)}
+                rows={4}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="editSqlQuery">SQL Query</Label>
+              <Textarea
+                id="editSqlQuery"
+                value={editSqlQuery}
+                onChange={(e) => setEditSqlQuery(e.target.value)}
+                rows={6}
+                className="font-mono text-sm"
+              />
+            </div>
+
+            {/* New field for change description */}
+            <div>
+              <Label htmlFor="editChangeDescription">Change Description</Label>
+              <Textarea
+                id="editChangeDescription"
+                value={editChangeDescription}
+                onChange={(e) => setEditChangeDescription(e.target.value)}
+                placeholder="Describe what changes you made and why..."
+                rows={3}
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Describe the purpose of these changes for version tracking
+              </p>
+            </div>
+
+            <div className="flex space-x-2">
+              <Button onClick={handleSave} className="flex-1">
+                <Save className="w-4 h-4 mr-2" />
+                Save Changes
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditDefinition(kpi.definition);
+                  setEditSqlQuery(kpi.sqlQuery);
+                  setEditChangeDescription('');
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}

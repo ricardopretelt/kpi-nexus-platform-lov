@@ -151,7 +151,7 @@ export const api = {
   },
 
   // POST operations (create)
-  async createKPI(kpiData: Omit<KPI, 'id' | 'lastUpdated' | 'versions'>): Promise<{ id: string; message: string }> {
+  async createKPI(kpiData: Omit<KPI, 'id' | 'lastUpdated' | 'versions'> & { changeDescription?: string }): Promise<{ id: string; message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/kpis`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -176,7 +176,7 @@ export const api = {
   },
 
   // PUT operations (update)
-  async updateKPI(id: string, kpiData: Partial<KPI>): Promise<{ message: string }> {
+  async updateKPI(id: string, kpiData: Partial<KPI> & { changeDescription?: string }): Promise<{ message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/kpis/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
