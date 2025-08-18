@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { KPI } from '../types/kpi';
 import { Edit, History, User, Database, Image } from 'lucide-react';
-import { useEffect } from 'react';
 import { Topic } from '../services/api';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -156,6 +155,46 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
                             {version.sqlQuery}
                           </pre>
                         </div>
+                        {Array.isArray((version as any).additionalBlocks) && (version as any).additionalBlocks.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-medium">Additional Blocks</h4>
+                            {(version as any).additionalBlocks.map((block: any, idx: number) => (
+                              <div key={block.id || `v-${version.id}-block-${idx}`} className="border rounded-lg p-3 space-y-2">
+                                <div className="font-medium">
+                                  {block.title || `Additional Information ${idx + 1}`}
+                                </div>
+                                {block.subtitle && (
+                                  <div className="text-sm text-gray-600">{block.subtitle}</div>
+                                )}
+                                {block.text && (
+                                  <p className="text-sm text-gray-700 leading-relaxed">{block.text}</p>
+                                )}
+                                {block.endContent === 'code' && block.codeContent && (
+                                  <pre className="bg-gray-900 text-green-400 p-3 rounded-lg overflow-x-auto text-sm">
+                                    {block.codeContent}
+                                  </pre>
+                                )}
+                                {block.endContent === 'image' && block.imageUrl && (
+                                  <div className="bg-gray-100 rounded-lg p-3">
+                                    <img
+                                      src={block.imageUrl}
+                                      alt="Additional content"
+                                      className="w-full h-48 object-cover rounded-lg"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                      }}
+                                    />
+                                    <div className="hidden text-center text-gray-500 py-6">
+                                      <Image className="mx-auto h-10 w-10 mb-2 text-gray-400" />
+                                      <p>Image preview not available</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
