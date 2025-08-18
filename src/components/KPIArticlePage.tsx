@@ -21,6 +21,7 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
   const { user } = useAuth();
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [latestApprovals, setLatestApprovals] = useState<Array<{ user_id: number; status: string }>>([]);
 
   // Load topics on component mount
   useEffect(() => {
@@ -41,6 +42,65 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
       const topic = topics.find(t => t.id === id);
       return topic ? topic.name : `Unknown Topic ${id}`;
     });
+  };
+
+  const latestVersion = (kpi.versions || []).reduce((acc: any, v: any) => {
+    if (!acc) return v;
+    return (v.version ?? 0) > (acc.version ?? 0) ? v : acc;
+  }, null);
+
+  useEffect(() => {
+    const loadApprovals = async () => {
+      try {
+        if (latestVersion?.id && latestVersion?.status === 'pending') {
+          const approvals = await api.getApprovals(String(latestVersion.id));
+          setLatestApprovals(approvals);
+        } else {
+          setLatestApprovals([]);
+        }
+      } catch (e) {
+        console.error('Failed to load approvals', e);
+      }
+    };
+    loadApprovals();
+  }, [kpi.id, latestVersion?.id, latestVersion?.status]);
+
+  const userHasPendingApproval =
+    !!(user && latestVersion?.status === 'pending' &&
+      latestApprovals.some(a => String(a.user_id) === String(user.id) && a.status === 'pending'));
+
+  const handleApprove = async () => {
+    if (!latestVersion?.id) return;
+    try {
+      await api.approveKpiVersion(String(latestVersion.id));
+      // Immediately refresh to show updated status
+      const refreshed = await api.getKPI(String(kpi.id));
+      onUpdate(refreshed);
+      // Also refresh approvals list
+      if (latestVersion?.id) {
+        const approvals = await api.getApprovals(String(latestVersion.id));
+        setLatestApprovals(approvals);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!latestVersion?.id) return;
+    try {
+      await api.rejectKpiVersion(String(latestVersion.id));
+      // Immediately refresh to show updated status
+      const refreshed = await api.getKPI(String(kpi.id));
+      onUpdate(refreshed);
+      // Also refresh approvals list
+      if (latestVersion?.id) {
+        const approvals = await api.getApprovals(String(latestVersion.id));
+        setLatestApprovals(approvals);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const canEdit = () => {
@@ -105,6 +165,9 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
             <Badge variant={kpi.status === 'active' ? 'default' : 'secondary'}>
               {kpi.status}
             </Badge>
+            {latestVersion?.status === 'pending' && (
+              <Badge variant="secondary">Pending Approval (v{latestVersion.version})</Badge>
+            )}
             <span className="text-sm text-gray-600">
               {kpi.topics && kpi.topics.length > 0 ? getTopicNames(kpi.topics).join(', ') : 'No topics'}
             </span>
@@ -203,6 +266,26 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
             </DialogContent>
           </Dialog>
           
+          {/* Approval actions */}
+          {userHasPendingApproval && (
+            <>
+              <Button
+                onClick={handleApprove}
+                className="bg-green-600 hover:bg-green-700"
+                size="sm"
+              >
+                Approve Version
+              </Button>
+              <Button
+                onClick={handleReject}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                size="sm"
+              >
+                Reject Version
+              </Button>
+            </>
+          )}
+
           {/* Add Modify KPI Button - Same styling as Add KPI button */}
           {canEdit() && (
             <Button

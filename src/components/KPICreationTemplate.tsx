@@ -28,7 +28,6 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     definition: '',
     sqlQuery: '',
     topics: [] as number[], // Changed from string[] to number[]
-    status: 'active' as 'active' | 'inactive',
     dataSpecialist: '',
     businessSpecialist: '',
     changeDescription: '' // New field for change description
@@ -137,7 +136,6 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
         definition: formData.definition,
         sqlQuery: formData.sqlQuery,
         topics: formData.topics,
-        status: formData.status,
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
         additionalBlocks: additionalBlocks,
@@ -175,11 +173,11 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
             dataSpecialistId: dsUser?.id,
             businessSpecialistId: bsUser?.id,
             topics: formData.topics,
-            status: formData.status,
+            status: 'pending', // Will be set by backend based on approval requirements
             additionalBlocks: additionalBlocks.length > 0 ? additionalBlocks : undefined
           }
         ],
-        status: formData.status,
+        status: 'pending', // Will be set by backend based on approval requirements
         additionalBlocks: additionalBlocks.length > 0 ? additionalBlocks : undefined // Only include if there are actual blocks
       };
       
@@ -367,24 +365,6 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label>Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: 'active' | 'inactive') => 
-                    handleInputChange('status', value)
-                  }
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div>
                 <Label>Change Description</Label>
                 <Textarea

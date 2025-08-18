@@ -26,7 +26,6 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
     definition: kpi.definition,
     sqlQuery: kpi.sqlQuery,
     topics: kpi.topics || [],
-    status: kpi.status,
     dataSpecialist: kpi.dataSpecialist,
     businessSpecialist: kpi.businessSpecialist,
     changeDescription: ''
@@ -125,7 +124,6 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
         topics: formData.topics,
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
-        status: formData.status,
         additionalBlocks: additionalBlocks,
         changeDescription: formData.changeDescription
       });
@@ -147,7 +145,7 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
         topics: formData.topics,
-        status: formData.status,
+        status: 'pending_approval', // Will be set by backend based on approval requirements
         additionalBlocks: additionalBlocks,
         dataSpecialistId: dsUser?.id,
         businessSpecialistId: bsUser?.id
@@ -160,7 +158,6 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
         topics: formData.topics,
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
-        status: formData.status,
         additionalBlocks: additionalBlocks,
         lastUpdated: new Date().toISOString(),
         versions: [...(kpi.versions || []), newVersion]
@@ -319,30 +316,6 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
                         {user.full_name}
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Status</CardTitle>
-            <CardDescription>Set the current status of this KPI</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div>
-              <Label htmlFor="status">Status *</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: 'active' | 'inactive') => handleInputChange('status', value)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>

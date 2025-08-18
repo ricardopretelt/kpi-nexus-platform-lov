@@ -429,7 +429,8 @@ app.get('/api/kpis', authenticateToken, async (req, res) => {
             'businessSpecialist', u5.full_name,
             'dataSpecialistId', kv2.data_specialist_id,
             'businessSpecialistId', kv2.business_specialist_id,
-            'additionalBlocks', kv2.additional_blocks
+            'additionalBlocks', kv2.additional_blocks,
+            'status', kv2.status
           ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
@@ -492,7 +493,8 @@ app.get('/api/kpis/:id', authenticateToken, async (req, res) => {
             'businessSpecialist', u5.full_name,
             'dataSpecialistId', kv2.data_specialist_id,
             'businessSpecialistId', kv2.business_specialist_id,
-            'additionalBlocks', kv2.additional_blocks
+            'additionalBlocks', kv2.additional_blocks,
+            'status', kv2.status
           ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
@@ -651,6 +653,13 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
       businessSpecialistId = businessSpecialistResult.rows[0].id;
     }
     
+    // Determine if only the creator is assigned (no approvals needed)
+    const assigned = new Set();
+    if (dataSpecialistId) assigned.add(dataSpecialistId);
+    if (businessSpecialistId) assigned.add(businessSpecialistId);
+    const creatorId = Number(req.user.id);
+    const onlyCreatorAssigned = assigned.size === 1 && assigned.has(creatorId);
+
     // Start a transaction
     const client = await pool.connect();
     try {
@@ -670,12 +679,41 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
         INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, topics, data_specialist_id, business_specialist_id, status, additional_blocks, updated_by, change_description)
         VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id
-      `, [kpiId, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, status || 'active', additionalBlocks ? JSON.stringify(additionalBlocks) : null, req.user.id, changeDescription || 'Initial version created']);
+      `, [
+        kpiId,
+        definition,
+        sqlQuery,
+        JSON.stringify(topics),
+        dataSpecialistId,
+        businessSpecialistId,
+        onlyCreatorAssigned ? 'active' : 'pending',
+        additionalBlocks ? JSON.stringify(additionalBlocks) : null,
+        creatorId,
+        changeDescription || 'Initial version created'
+      ]);
       
-      // Update the KPI to reference the active version
+      // Set as current version (will display "pending_approval" if approvals are needed)
       await client.query(`
         UPDATE kpis SET active_version = $1 WHERE id = $2
       `, [versionResult.rows[0].id, kpiId]);
+
+      // If approvals are needed, create approval tasks + notifications
+      if (!onlyCreatorAssigned) {
+        // Only create approvals for OTHER users (not the creator)
+        const approvers = new Set(assigned);
+        approvers.delete(creatorId); // Remove creator from approval list
+        for (const uid of approvers) {
+          await client.query(`
+            INSERT INTO kpi_approvals (kpi_version_id, user_id, status)
+            VALUES ($1, $2, 'pending')
+            ON CONFLICT (kpi_version_id, user_id) DO NOTHING
+          `, [versionResult.rows[0].id, uid]);
+          await client.query(`
+            INSERT INTO notifications (user_id, type, message, kpi_version_id, is_read)
+            VALUES ($1, 'approval_request', $2, $3, FALSE)
+          `, [uid, `KPI "${name}" version 1 requires your approval`, versionResult.rows[0].id]);
+        }
+      }
       
       await client.query('COMMIT');
       
@@ -733,6 +771,13 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
 
     const dataSpecialistId = dataSpecialistResult.rows[0].id;
     const businessSpecialistId = businessSpecialistResult.rows[0].id;
+
+    // Determine if only the creator is assigned (no approvals needed)
+    const assigned = new Set();
+    if (dataSpecialistId) assigned.add(dataSpecialistId);
+    if (businessSpecialistId) assigned.add(businessSpecialistId);
+    const creatorId = Number(req.user.id);
+    const onlyCreatorAssigned = assigned.size === 1 && assigned.has(creatorId);
     
     // Start a transaction
     const client = await pool.connect();
@@ -754,12 +799,45 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
         INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, topics, data_specialist_id, business_specialist_id, status, additional_blocks, updated_by, change_description)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id
-      `, [id, newVersion, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, status, additionalBlocks ? JSON.stringify(additionalBlocks) : null, req.user.id, changeDescription || 'Updated via API']);
+      `, [
+        id,
+        newVersion,
+        definition,
+        sqlQuery,
+        JSON.stringify(topics),
+        dataSpecialistId,
+        businessSpecialistId,
+        onlyCreatorAssigned ? 'active' : 'pending',
+        additionalBlocks ? JSON.stringify(additionalBlocks) : null,
+        creatorId,
+        changeDescription || 'Updated via API'
+      ]);
       
-      // Update the KPI to reference the new active version
-      await client.query(`
-        UPDATE kpis SET active_version = $1 WHERE id = $2
-      `, [newVersionResult.rows[0].id, id]);
+      if (onlyCreatorAssigned) {
+        // Activate immediately and deactivate previous
+        const prev = await client.query('SELECT active_version FROM kpis WHERE id = $1', [id]);
+        const prevActiveId = prev.rows[0]?.active_version || null;
+        await client.query(`UPDATE kpis SET active_version = $1 WHERE id = $2`, [newVersionResult.rows[0].id, id]);
+        if (prevActiveId && prevActiveId !== newVersionResult.rows[0].id) {
+          await client.query(`UPDATE kpi_versions SET status = 'inactive' WHERE id = $1`, [prevActiveId]);
+        }
+      } else {
+        // Create approvals + notifications; keep previous version active
+        // Only create approvals for OTHER users (not the creator)
+        const approvers = new Set(assigned);
+        approvers.delete(creatorId); // Remove creator from approval list
+        for (const uid of approvers) {
+          await client.query(`
+            INSERT INTO kpi_approvals (kpi_version_id, user_id, status)
+            VALUES ($1, $2, 'pending')
+            ON CONFLICT (kpi_version_id, user_id) DO NOTHING
+          `, [newVersionResult.rows[0].id, uid]);
+          await client.query(`
+            INSERT INTO notifications (user_id, type, message, kpi_version_id, is_read)
+            VALUES ($1, 'approval_request', $2, $3, FALSE)
+          `, [uid, `KPI "${name}" version ${newVersion} requires your approval`, newVersionResult.rows[0].id]);
+        }
+      }
       
       await client.query('COMMIT');
       
@@ -857,6 +935,170 @@ app.post('/api/auth/check-email', async (req, res) => {
     });
   } catch (err) {
     console.error('Email check error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ====== Approvals & Notifications ======
+app.get('/api/kpi-versions/:id/approvals', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const r = await pool.query(`
+      SELECT id, kpi_version_id, user_id, status, created_at, updated_at
+      FROM kpi_approvals
+      WHERE kpi_version_id = $1
+      ORDER BY id
+    `, [id]);
+    res.json(r.rows);
+  } catch (err) {
+    console.error('Approvals fetch error', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/kpi-versions/:id/approve', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const versionId = Number(req.params.id);
+    const userId = Number(req.user.id);
+
+    await client.query(`
+      INSERT INTO kpi_approvals (kpi_version_id, user_id, status)
+      VALUES ($1, $2, 'approved')
+      ON CONFLICT (kpi_version_id, user_id) DO UPDATE
+      SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+    `, [versionId, userId]);
+
+    const allRes = await client.query(`
+      SELECT 
+        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+        COUNT(*) AS total_count
+      FROM kpi_approvals
+      WHERE kpi_version_id = $1
+    `, [versionId]);
+    const { approved_count, total_count } = allRes.rows[0];
+    const allApproved = Number(approved_count) === Number(total_count);
+
+    if (allApproved) {
+      const kv = await client.query(`SELECT kpi_id, version_number FROM kpi_versions WHERE id = $1`, [versionId]);
+      if (kv.rows.length === 0) throw new Error('Version not found');
+      const { kpi_id, version_number } = kv.rows[0];
+
+      const prev = await client.query('SELECT active_version FROM kpis WHERE id = $1', [kpi_id]);
+      const prevActiveId = prev.rows[0]?.active_version || null;
+
+      await client.query(`UPDATE kpi_versions SET status = 'active' WHERE id = $1`, [versionId]);
+      await client.query(`UPDATE kpis SET active_version = $1 WHERE id = $2`, [versionId, kpi_id]);
+      if (prevActiveId && prevActiveId !== versionId) {
+        await client.query(`UPDATE kpi_versions SET status = 'inactive' WHERE id = $1`, [prevActiveId]);
+      }
+
+      // Notify all users involved (including creator) of activation
+      const allInvolved = await client.query(`
+        SELECT DISTINCT user_id FROM (
+          SELECT data_specialist_id as user_id FROM kpi_versions WHERE id = $1
+          UNION
+          SELECT business_specialist_id as user_id FROM kpi_versions WHERE id = $1
+        ) u WHERE user_id IS NOT NULL
+      `, [versionId]);
+      for (const row of allInvolved.rows) {
+        await client.query(`
+          INSERT INTO notifications (user_id, type, message, kpi_version_id, is_read)
+          VALUES ($1, 'version_approved', $2, $3, FALSE)
+        `, [row.user_id, `Version ${version_number} has been activated`, versionId]);
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: allApproved ? 'Version approved and activated' : 'Approval recorded' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Approve error', err);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/kpi-versions/:id/reject', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const versionId = Number(req.params.id);
+    const userId = Number(req.user.id);
+
+    await client.query(`
+      INSERT INTO kpi_approvals (kpi_version_id, user_id, status)
+      VALUES ($1, $2, 'rejected')
+      ON CONFLICT (kpi_version_id, user_id) DO UPDATE
+      SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+    `, [versionId, userId]);
+
+    await client.query(`UPDATE kpi_versions SET status = 'rejected' WHERE id = $1`, [versionId]);
+
+    const kv = await client.query(`SELECT kpi_id, version_number FROM kpi_versions WHERE id = $1`, [versionId]);
+    const { version_number } = kv.rows[0];
+    const approvers = await client.query(`SELECT DISTINCT user_id FROM kpi_approvals WHERE kpi_version_id = $1`, [versionId]);
+    for (const row of approvers.rows) {
+      await client.query(`
+        INSERT INTO notifications (user_id, type, message, kpi_version_id, is_read)
+        VALUES ($1, 'version_rejected', $2, $3, FALSE)
+      `, [row.user_id, `Version ${version_number} has been rejected`, versionId]);
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Version rejected' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Reject error', err);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+  try {
+    const unreadOnly = String(req.query.unread || '').toLowerCase() === 'true';
+    const rows = await pool.query(
+      `SELECT id, user_id, type, message, kpi_version_id, is_read, created_at
+       FROM notifications
+       WHERE user_id = $1 ${unreadOnly ? 'AND is_read = FALSE' : ''}
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json(rows.rows);
+  } catch (err) {
+    console.error('Notifications fetch error', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/notifications/:id/read', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query(`UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2`, [id, req.user.id]);
+    res.json({ message: 'Notification marked as read' });
+  } catch (err) {
+    console.error('Notification mark read error', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/pending-approvals', authenticateToken, async (req, res) => {
+  try {
+    const rows = await pool.query(`
+      SELECT kv.id as kpi_version_id, kv.kpi_id, kv.version_number, k.name as kpi_name
+      FROM kpi_versions kv
+      JOIN kpis k ON kv.kpi_id = k.id
+      JOIN kpi_approvals ka ON ka.kpi_version_id = kv.id
+      WHERE ka.user_id = $1 AND ka.status = 'pending'
+      ORDER BY kv.created_at DESC
+    `, [req.user.id]);
+    res.json(rows.rows);
+  } catch (err) {
+    console.error('Pending approvals fetch error', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
