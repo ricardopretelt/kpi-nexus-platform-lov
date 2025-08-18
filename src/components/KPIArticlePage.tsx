@@ -3,32 +3,23 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { KPI, KPIVersion } from '../types/kpi';
-import { Edit, Save, History, User, Clock, Database, Image, X } from 'lucide-react';
+import { KPI } from '../types/kpi';
+import { Edit, History, User, Database, Image } from 'lucide-react';
 import { useEffect } from 'react';
 import { Topic } from '../services/api';
 import { api } from '../services/api';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface KPIArticlePageProps {
   kpi: KPI;
   onUpdate: (updatedKPI: KPI) => void;
+  onNavigateToModify?: (kpi: KPI) => void; // New prop for navigation
 }
 
-const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
+const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePageProps) => {
   const { user } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editDefinition, setEditDefinition] = useState(kpi.definition);
-  const [editSqlQuery, setEditSqlQuery] = useState(kpi.sqlQuery);
-  const [editChangeDescription, setEditChangeDescription] = useState(''); // New field
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [topics, setTopics] = useState<Topic[]>([]);
 
@@ -55,48 +46,32 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
 
   const canEdit = () => {
     if (!user) return false;
-    if (user.role === 'admin') return true;
-    if (user.role === 'data_specialist' && user.full_name === kpi.dataSpecialist) return true;
-    if (user.role === 'business_specialist' && user.full_name === kpi.businessSpecialist) return true;
-    return false;
+    const userId = String(user.id).trim();
+    if (!userId) return false;
+
+    // Collect all assigned specialist IDs from KPI versions (camelCase and snake_case)
+    const assignedIds = new Set<string>();
+    (kpi.versions || []).forEach((v) => {
+      const ds = (v as any).dataSpecialistId ?? (v as any).data_specialist_id;
+      const bs = (v as any).businessSpecialistId ?? (v as any).business_specialist_id;
+      if (ds !== undefined && ds !== null && String(ds).trim() !== '') assignedIds.add(String(ds).trim());
+      if (bs !== undefined && bs !== null && String(bs).trim() !== '') assignedIds.add(String(bs).trim());
+    });
+
+    const match = assignedIds.has(userId);
+
+    console.log('canEdit check (ID-based):', {
+      userId,
+      assignedIds: Array.from(assignedIds),
+      match
+    });
+
+    return match;
   };
 
-  const handleSave = async () => {
-    try {
-      // Update the KPI with new version
-      await api.updateKPI(kpi.id, {
-        definition: editDefinition,
-        sqlQuery: editSqlQuery,
-        changeDescription: editChangeDescription || 'Updated definition and SQL query'
-      });
-
-      // Create new version object for local state
-      const newVersion: KPIVersion = {
-        id: `v${kpi.versions.length + 1}`,
-        version: kpi.versions.length + 1,
-        definition: editDefinition,
-        sqlQuery: editSqlQuery,
-        updatedAt: new Date().toISOString().split('T')[0],
-        changes: editChangeDescription || 'Updated definition and SQL query',
-        dataSpecialist: kpi.dataSpecialist,
-        businessSpecialist: kpi.businessSpecialist
-      };
-
-      const updatedKPI: KPI = {
-        ...kpi,
-        definition: editDefinition,
-        sqlQuery: editSqlQuery,
-        lastUpdated: new Date().toISOString().split('T')[0],
-        versions: [...kpi.versions, newVersion]
-      };
-
-      onUpdate(updatedKPI);
-      setIsEditing(false);
-      setEditChangeDescription(''); // Reset change description
-      console.log('KPI updated:', updatedKPI);
-    } catch (error) {
-      console.error('Error updating KPI:', error);
-      // Handle error appropriately
+  const handleModifyKPI = () => {
+    if (onNavigateToModify) {
+      onNavigateToModify(kpi);
     }
   };
 
@@ -156,7 +131,7 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                {kpi.versions.map((version) => (
+                {[...kpi.versions].sort((a, b) => (b.version ?? 0) - (a.version ?? 0)).map((version) => (
                   <Card key={version.id}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -189,109 +164,19 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
             </DialogContent>
           </Dialog>
           
+          {/* Add Modify KPI Button - Same styling as Add KPI button */}
           {canEdit() && (
             <Button
-              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-              variant={isEditing ? "default" : "outline"}
+              onClick={() => handleModifyKPI()}
+              className="bg-blue-600 hover:bg-blue-700"
               size="sm"
             >
-              {isEditing ? (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
-                </>
-              ) : (
-                <>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </>
-              )}
-            </Button>
-          )}
-          
-          {isEditing && (
-            <Button
-              onClick={() => {
-                setIsEditing(false);
-                setEditDefinition(kpi.definition);
-                setEditSqlQuery(kpi.sqlQuery);
-                setEditChangeDescription('');
-              }}
-              variant="outline"
-              size="sm"
-            >
-              <X className="mr-2 h-4 w-4" />
-              Cancel
+              <Edit className="mr-2 h-4 w-4" />
+              Modify KPI
             </Button>
           )}
         </div>
       </div>
-
-      {/* Edit Form */}
-      {isEditing && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Edit KPI</CardTitle>
-            <CardDescription>Update the definition and SQL query for this KPI</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="editDefinition">Definition</Label>
-              <Textarea
-                id="editDefinition"
-                value={editDefinition}
-                onChange={(e) => setEditDefinition(e.target.value)}
-                rows={4}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="editSqlQuery">SQL Query</Label>
-              <Textarea
-                id="editSqlQuery"
-                value={editSqlQuery}
-                onChange={(e) => setEditSqlQuery(e.target.value)}
-                rows={6}
-                className="font-mono text-sm"
-              />
-            </div>
-
-            {/* New field for change description */}
-            <div>
-              <Label htmlFor="editChangeDescription">Change Description</Label>
-              <Textarea
-                id="editChangeDescription"
-                value={editChangeDescription}
-                onChange={(e) => setEditChangeDescription(e.target.value)}
-                placeholder="Describe what changes you made and why..."
-                rows={3}
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Describe the purpose of these changes for version tracking
-              </p>
-            </div>
-
-            <div className="flex space-x-2">
-              <Button onClick={handleSave} className="flex-1">
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditDefinition(kpi.definition);
-                  setEditSqlQuery(kpi.sqlQuery);
-                  setEditChangeDescription('');
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
@@ -305,16 +190,7 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isEditing ? (
-                <Textarea
-                  value={editDefinition}
-                  onChange={(e) => setEditDefinition(e.target.value)}
-                  className="min-h-32"
-                  placeholder="Enter KPI definition..."
-                />
-              ) : (
-                <p className="text-gray-700 leading-relaxed">{kpi.definition}</p>
-              )}
+              <p className="text-gray-700 leading-relaxed">{kpi.definition}</p>
             </CardContent>
           </Card>
 
@@ -330,18 +206,9 @@ const KPIArticlePage = ({ kpi, onUpdate }: KPIArticlePageProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isEditing ? (
-                <Textarea
-                  value={editSqlQuery}
-                  onChange={(e) => setEditSqlQuery(e.target.value)}
-                  className="min-h-40 font-mono text-sm"
-                  placeholder="Enter SQL query..."
-                />
-              ) : (
-                <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
-                  {kpi.sqlQuery}
-                </pre>
-              )}
+              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
+                {kpi.sqlQuery}
+              </pre>
             </CardContent>
           </Card>
 

@@ -6,11 +6,13 @@ import TopicsPage from './TopicsPage';
 import KPIArticlePage from './KPIArticlePage';
 import KPICreationTemplate from './KPICreationTemplate';
 import UserManagement from './UserManagement';
+import KPIModificationTemplate from './KPIModificationTemplate';
 import { KPI } from '../types/kpi';
 import { api, Topic } from '../services/api';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
-type Page = 'home' | 'topics' | 'kpi' | 'users' | 'create-kpi';
+type Page = 'home' | 'topics' | 'kpi' | 'users' | 'create-kpi' | 'modify-kpi';
 
 const Dashboard = () => {
   const { user, hasAdminAccess, onUserUpdate } = useAuth();
@@ -21,6 +23,7 @@ const Dashboard = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [kpiToModify, setKpiToModify] = useState<KPI | null>(null);
 
   // Function to fetch KPI and topic data
   const fetchData = async () => {
@@ -94,6 +97,27 @@ const Dashboard = () => {
     setCurrentPage('home');
   };
 
+  const handleNavigateToModify = (kpi: KPI) => {
+    setKpiToModify(kpi);
+    setCurrentPage('modify-kpi');
+  };
+
+  const handleKPIModificationSuccess = (updatedKPI: KPI) => {
+    // Update the KPI in the list
+    setKpis(prev => prev.map(kpi => kpi.id === updatedKPI.id ? updatedKPI : kpi));
+    
+    // Show success message and redirect back to KPI page
+    toast.success('KPI modified successfully!');
+    setSelectedKPI(updatedKPI);
+    setCurrentPage('kpi');
+    setKpiToModify(null);
+  };
+
+  const handleKPIModificationCancel = () => {
+    setCurrentPage('kpi');
+    setKpiToModify(null);
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -123,12 +147,23 @@ const Dashboard = () => {
           <TopicsPage topic={selectedTopic} kpis={kpis} onKPISelect={handleKPISelect} />
         )}
         {currentPage === 'kpi' && selectedKPI && (
-          <KPIArticlePage kpi={selectedKPI} onUpdate={handleKPIUpdate} />
+          <KPIArticlePage 
+            kpi={selectedKPI} 
+            onUpdate={handleKPIUpdate}
+            onNavigateToModify={handleNavigateToModify}
+          />
         )}
         {currentPage === 'create-kpi' && (
           <KPICreationTemplate 
             onCancel={handleKPICreationCancel}
             onSuccess={handleKPICreationSuccess}
+          />
+        )}
+        {currentPage === 'modify-kpi' && kpiToModify && (
+          <KPIModificationTemplate 
+            kpi={kpiToModify}
+            onCancel={handleKPIModificationCancel}
+            onSuccess={handleKPIModificationSuccess}
           />
         )}
         {currentPage === 'users' && hasAdminAccess(user) && (
