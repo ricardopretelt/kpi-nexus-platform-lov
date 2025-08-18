@@ -147,8 +147,12 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
       const result = await api.createKPI(kpiData);
       
       toast.success('KPI created successfully!');
-      
-      // Create a proper KPI object with initial version
+
+      // Resolve selected specialists to IDs for immediate display/permissions
+      const dsUser = users.find(u => u.full_name === formData.dataSpecialist);
+      const bsUser = users.find(u => u.full_name === formData.businessSpecialist);
+
+      // Create a KPI object with an initial version that includes specialist names and IDs
       const newKPI: KPI = {
         id: result.id,
         name: formData.name,
@@ -164,9 +168,15 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
             version: 1,
             definition: formData.definition,
             sqlQuery: formData.sqlQuery,
-            updatedBy: user?.full_name || 'Unknown',
             updatedAt: new Date().toISOString(),
-            changes: formData.changeDescription || 'Initial version created'
+            changes: formData.changeDescription || 'Initial version created',
+            dataSpecialist: formData.dataSpecialist,
+            businessSpecialist: formData.businessSpecialist,
+            dataSpecialistId: dsUser?.id,
+            businessSpecialistId: bsUser?.id,
+            topics: formData.topics,
+            status: formData.status,
+            additionalBlocks: additionalBlocks.length > 0 ? additionalBlocks : undefined
           }
         ],
         status: formData.status,

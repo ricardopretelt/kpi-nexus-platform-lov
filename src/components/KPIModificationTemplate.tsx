@@ -162,7 +162,7 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
         businessSpecialist: formData.businessSpecialist,
         status: formData.status,
         additionalBlocks: additionalBlocks,
-        lastUpdated: new Date().toISOString().split('T')[0],
+        lastUpdated: new Date().toISOString(),
         versions: [...(kpi.versions || []), newVersion]
       };
 
@@ -369,6 +369,120 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
             </div>
           </CardContent>
         </Card>
+
+        {/* Add Additional Block Button - inside the form */}
+        <Card>
+          <CardContent className="pt-6">
+            <Button
+              variant="outline"
+              onClick={addAdditionalBlock}
+              className="w-full"
+              type="button"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Additional Block
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Additional Content Blocks - inside the form */}
+        {additionalBlocks.map((block, index) => (
+          <Card key={block.id}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-medium mr-2">Optional</span>
+                  Additional Block {index + 1}
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => removeAdditionalBlock(block.id)}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardDescription>
+                Custom content block for additional information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Title (optional)</Label>
+                <Input
+                  value={block.title || ''}
+                  onChange={(e) => updateAdditionalBlock(block.id, 'title', e.target.value)}
+                  placeholder="Block title..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label>Subtitle (optional)</Label>
+                <Input
+                  value={block.subtitle || ''}
+                  onChange={(e) => updateAdditionalBlock(block.id, 'subtitle', e.target.value)}
+                  placeholder="Block subtitle..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label>Text (optional)</Label>
+                <Textarea
+                  value={block.text || ''}
+                  onChange={(e) => updateAdditionalBlock(block.id, 'text', e.target.value)}
+                  placeholder="Block content..."
+                  className="mt-1 min-h-24"
+                />
+              </div>
+              
+              <div>
+                <Label>End Content</Label>
+                <Select
+                  value={block.endContent}
+                  onValueChange={(value: 'code' | 'image' | 'none') => 
+                    updateAdditionalBlock(block.id, 'endContent', value)
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="code">Code</SelectItem>
+                    <SelectItem value="image">Image</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {block.endContent === 'code' && (
+                  <div className="mt-2">
+                    <Label>Code Content</Label>
+                    <Textarea
+                      value={block.codeContent || ''}
+                      onChange={(e) => updateAdditionalBlock(block.id, 'codeContent', e.target.value)}
+                      placeholder="Enter code..."
+                      className="min-h-24 font-mono text-sm"
+                    />
+                  </div>
+                )}
+                
+                {block.endContent === 'image' && (
+                  <div className="mt-2">
+                    <Label>Image URL</Label>
+                    <Input
+                      value={block.imageUrl || ''}
+                      onChange={(e) => updateAdditionalBlock(block.id, 'imageUrl', e.target.value)}
+                      placeholder="Enter image URL..."
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
 
         <Card>
           <CardContent className="pt-6 space-y-3">
