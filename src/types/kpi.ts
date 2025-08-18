@@ -19,9 +19,18 @@ export interface KPIVersion {
   version: number;
   definition: string;
   sqlQuery: string;
-  updatedBy: string;
   updatedAt: string;
   changes: string;
+  // Specialist fields
+  dataSpecialist?: string;
+  businessSpecialist?: string;
+  // New fields from the refactored schema
+  topics?: number[];
+  dataSpecialistId?: number;
+  businessSpecialistId?: number;
+  status?: 'active' | 'inactive';
+  additionalBlocks?: KPIBlock[];
+  changeDescription?: string;
 }
 
 // New interface for additional blocks

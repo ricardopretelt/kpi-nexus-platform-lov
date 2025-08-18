@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,27 +30,18 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     topics: [] as number[], // Changed from string[] to number[]
     status: 'active' as 'active' | 'inactive',
     dataSpecialist: '',
-    businessSpecialist: ''
+    businessSpecialist: '',
+    changeDescription: '' // New field for change description
   });
   
-  const [additionalBlocks, setAdditionalBlocks] = useState<KPIBlock[]>([
-    // Default dashboard preview block (no default text)
-    {
-      id: 'default-dashboard-preview',
-      title: '',
-      subtitle: '',
-      text: '',
-      endContent: 'image' as const,
-      imageUrl: ''
-    }
-  ]);
+  const [additionalBlocks, setAdditionalBlocks] = useState<KPIBlock[]>([]); // Start with empty array instead of default block
   const [topics, setTopics] = useState<Topic[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
   // Load topics and users on component mount
-  useState(() => {
+  useEffect(() => {
     const loadData = async () => {
       try {
         const [topicsData, usersData] = await Promise.all([
@@ -77,7 +68,7 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     };
     
     loadData();
-  });
+  }, [user]);
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -125,67 +116,67 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     return users.filter(u => u.role !== user.role);
   };
 
-  const handleSubmit = async () => {
-    // Validation
-    if (!formData.name.trim()) {
-      toast.error('KPI name is required');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.definition || !formData.sqlQuery || formData.topics.length === 0) {
+      toast.error('Please fill in all required fields');
       return;
     }
-    if (!formData.definition.trim()) {
-      toast.error('KPI definition is required');
-      return;
-    }
-    if (!formData.sqlQuery.trim()) {
-      toast.error('SQL query is required');
-      return;
-    }
-    if (formData.topics.length === 0) {
-      toast.error('At least one topic is required');
-      return;
-    }
-    // Require at least one specialist
+    
     if (!formData.dataSpecialist && !formData.businessSpecialist) {
-      toast.error('At least one specialist (data or business) is required');
+      toast.error('Please select at least one specialist');
       return;
     }
-
+    
     setLoading(true);
+    
     try {
-      const kpiData: Omit<KPI, 'id' | 'lastUpdated' | 'versions'> = {
+      const kpiData = {
         name: formData.name,
         definition: formData.definition,
         sqlQuery: formData.sqlQuery,
         topics: formData.topics,
         status: formData.status,
-        dataSpecialist: formData.dataSpecialist || undefined,
-        businessSpecialist: formData.businessSpecialist || undefined,
-        additionalBlocks: additionalBlocks.length > 0 ? additionalBlocks : undefined
+        dataSpecialist: formData.dataSpecialist,
+        businessSpecialist: formData.businessSpecialist,
+        additionalBlocks: additionalBlocks,
+        changeDescription: formData.changeDescription || 'Initial version created'
       };
-
-      console.log('Submitting KPI data:', kpiData); // Debug log
-
-      const result = await api.createKPI(kpiData);
-      console.log('API response:', result); // Debug log
       
-      // Fetch the complete KPI data using the returned ID
-      const fullKPI = await api.getKPI(result.id);
+      const result = await api.createKPI(kpiData);
       
       toast.success('KPI created successfully!');
       
-      // Pass the complete KPI object to onSuccess
-      onSuccess(fullKPI);
+      // Create a proper KPI object with initial version
+      const newKPI: KPI = {
+        id: result.id,
+        name: formData.name,
+        definition: formData.definition,
+        sqlQuery: formData.sqlQuery,
+        topics: formData.topics,
+        dataSpecialist: formData.dataSpecialist,
+        businessSpecialist: formData.businessSpecialist,
+        lastUpdated: new Date().toISOString(),
+        versions: [
+          {
+            id: `v1`,
+            version: 1,
+            definition: formData.definition,
+            sqlQuery: formData.sqlQuery,
+            updatedBy: user?.full_name || 'Unknown',
+            updatedAt: new Date().toISOString(),
+            changes: formData.changeDescription || 'Initial version created'
+          }
+        ],
+        status: formData.status,
+        additionalBlocks: additionalBlocks.length > 0 ? additionalBlocks : undefined // Only include if there are actual blocks
+      };
+      
+      onSuccess(newKPI);
     } catch (error) {
-      console.error('Failed to create KPI:', error);
-      
-      // Better error handling
-      let errorMessage = 'Failed to create KPI';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      
-      toast.error(errorMessage);
+      console.error('Error creating KPI:', error);
+      toast.error('Failed to create KPI');
     } finally {
       setLoading(false);
     }
@@ -196,24 +187,22 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onCancel} size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Create New KPI</h1>
-            <p className="text-gray-600">Define a new KPI with all required information</p>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={onCancel}
+            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900">Create New KPI</h1>
+          <p className="mt-2 text-gray-600">Define a new Key Performance Indicator for your organization</p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* Block 1: KPI Definition (Required) */}
           <Card>
             <CardHeader>
@@ -232,19 +221,20 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Enter KPI name..."
-                  className="mt-1"
+                  placeholder="e.g., Customer Churn Rate"
+                  required
                 />
               </div>
               
               <div>
-                <Label htmlFor="definition">KPI Definition *</Label>
+                <Label htmlFor="definition">Definition *</Label>
                 <Textarea
                   id="definition"
                   value={formData.definition}
                   onChange={(e) => handleInputChange('definition', e.target.value)}
-                  placeholder="Describe what this KPI measures and its business context..."
-                  className="mt-1 min-h-32"
+                  placeholder="Describe what this KPI measures and why it's important..."
+                  rows={4}
+                  required
                 />
               </div>
             </CardContent>
@@ -267,11 +257,155 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
                 onChange={(e) => handleInputChange('sqlQuery', e.target.value)}
                 placeholder="Enter SQL query..."
                 className="min-h-40 font-mono text-sm"
+                required
               />
             </CardContent>
           </Card>
 
-          {/* Additional Blocks */}
+          {/* Block 3: Topics (Required) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium mr-2">Required</span>
+                Topics
+              </CardTitle>
+              <CardDescription>
+                Select relevant topics for this KPI
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {topics.map((topic) => (
+                  <div key={topic.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`topic-${topic.id}`}
+                      checked={formData.topics.includes(topic.id)}
+                      onChange={() => handleTopicToggle(topic.id)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor={`topic-${topic.id}`} className="text-sm">
+                      {topic.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Block 4: Responsibility Assignment (Required) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium mr-2">Required</span>
+                Responsibility Assignment
+              </CardTitle>
+              <CardDescription>
+                Assign specialists for this KPI
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Data Specialist *</Label>
+                <Select
+                  value={formData.dataSpecialist}
+                  onValueChange={(value) => handleInputChange('dataSpecialist', value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select data specialist" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.filter(u => u.role === 'data_specialist').map((user) => (
+                      <SelectItem key={user.id} value={user.full_name}>
+                        {user.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Business Specialist *</Label>
+                <Select
+                  value={formData.businessSpecialist}
+                  onValueChange={(value) => handleInputChange('businessSpecialist', value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select business specialist" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.filter(u => u.role === 'business_specialist').map((user) => (
+                      <SelectItem key={user.id} value={user.full_name}>
+                        {user.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Block 5: Additional Configuration (Optional) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-medium mr-2">Optional</span>
+                Additional Configuration
+              </CardTitle>
+              <CardDescription>
+                Additional settings and content blocks
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: 'active' | 'inactive') => 
+                    handleInputChange('status', value)
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Change Description</Label>
+                <Textarea
+                  value={formData.changeDescription}
+                  onChange={(e) => handleInputChange('changeDescription', e.target.value)}
+                  placeholder="Describe the purpose of this KPI creation..."
+                  rows={3}
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Optional: Describe why this KPI is being created
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Block 6: Add Additional Block Button - INSIDE THE FORM */}
+          <Card>
+            <CardContent className="pt-6">
+              <Button
+                variant="outline"
+                onClick={addAdditionalBlock}
+                className="w-full"
+                type="button"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Additional Block
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Block 7: Additional Content Blocks - INSIDE THE FORM */}
           {additionalBlocks.map((block, index) => (
             <Card key={block.id}>
               <CardHeader>
@@ -343,6 +477,7 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
                   
                   {block.endContent === 'code' && (
                     <div className="mt-2">
+                      <Label>Code Content</Label>
                       <Textarea
                         value={block.codeContent || ''}
                         onChange={(e) => updateAdditionalBlock(block.id, 'codeContent', e.target.value)}
@@ -354,6 +489,7 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
                   
                   {block.endContent === 'image' && (
                     <div className="mt-2">
+                      <Label>Image URL</Label>
                       <Input
                         value={block.imageUrl || ''}
                         onChange={(e) => updateAdditionalBlock(block.id, 'imageUrl', e.target.value)}
@@ -367,126 +503,11 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
             </Card>
           ))}
 
-          {/* Add Additional Block Button */}
-          <Card>
-            <CardContent className="pt-6">
-              <Button
-                variant="outline"
-                onClick={addAdditionalBlock}
-                className="w-full"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Additional Block
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* KPI Metadata */}
-          <Card>
-            <CardHeader>
-              <CardTitle>KPI Metadata</CardTitle>
-              <CardDescription>
-                Configuration and assignment details
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Topics *</Label>
-                <div className="mt-2 space-y-2">
-                  {topics.map((topic) => (
-                    <div key={topic.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`topic-${topic.id}`}
-                        checked={formData.topics.includes(topic.id)} // Changed from topic.name
-                        onChange={() => handleTopicToggle(topic.id)} // Changed from topic.name
-                        className="rounded border-gray-300"
-                      />
-                      <Label htmlFor={`topic-${topic.id}`} className="text-sm">
-                        {topic.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <Label>Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: 'active' | 'inactive') => 
-                    handleInputChange('status', value)
-                  }
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Responsibility Assignment */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Responsibility Assignment</CardTitle>
-              <CardDescription>
-                Assign specialists for this KPI
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Data Specialist *</Label>
-                <Select
-                  value={formData.dataSpecialist}
-                  onValueChange={(value) => handleInputChange('dataSpecialist', value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select data specialist" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.filter(u => u.role === 'data_specialist').map((user) => (
-                      <SelectItem key={user.id} value={user.full_name}>
-                        {user.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label>Business Specialist *</Label>
-                <Select
-                  value={formData.businessSpecialist}
-                  onValueChange={(value) => handleInputChange('businessSpecialist', value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select business specialist" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.filter(u => u.role === 'business_specialist').map((user) => (
-                      <SelectItem key={user.id} value={user.full_name}>
-                        {user.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Actions */}
           <Card>
             <CardContent className="pt-6 space-y-3">
               <Button
-                onClick={handleSubmit}
+                type="submit"
                 disabled={loading}
                 className="w-full"
               >
@@ -503,7 +524,7 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
               </Button>
             </CardContent>
           </Card>
-        </div>
+        </form>
       </div>
     </div>
   );

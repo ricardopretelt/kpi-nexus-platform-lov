@@ -409,31 +409,34 @@ app.get('/api/kpis', authenticateToken, async (req, res) => {
       SELECT 
         k.id,
         k.name,
-        k.definition,
-        k.sql_query as "sqlQuery",
-        k.topics,
+        kv.definition,
+        kv.sql_query as "sqlQuery",
+        kv.topics,
         u1.full_name as "dataSpecialist",
         u2.full_name as "businessSpecialist",
-        k.updated_at as "lastUpdated",
-        k.status,
-        k.additional_blocks as "additionalBlocks",
+        kv.created_at as "lastUpdated",
+        kv.status,
+        kv.additional_blocks as "additionalBlocks",
         json_agg(
           json_build_object(
-            'id', kv.id,
-            'version', kv.version_number,
-            'definition', kv.definition,
-            'sqlQuery', kv.sql_query,
-            'updatedBy', u3.full_name,
-            'updatedAt', kv.created_at,
-            'changes', kv.changes
-          ) ORDER BY kv.version_number
+            'id', kv2.id,
+            'version', kv2.version_number,
+            'definition', kv2.definition,
+            'sqlQuery', kv2.sql_query,
+            'updatedAt', kv2.created_at,
+            'changes', kv2.change_description,
+            'dataSpecialist', u4.full_name,
+            'businessSpecialist', u5.full_name
+          ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
-      LEFT JOIN users u1 ON k.data_specialist_id = u1.id
-      LEFT JOIN users u2 ON k.business_specialist_id = u2.id
-      LEFT JOIN kpi_versions kv ON k.id = kv.kpi_id
-      LEFT JOIN users u3 ON kv.updated_by = u3.id
-      GROUP BY k.id, u1.full_name, u2.full_name, k.topics, k.additional_blocks
+      INNER JOIN kpi_versions kv ON k.active_version = kv.id
+      LEFT JOIN users u1 ON kv.data_specialist_id = u1.id
+      LEFT JOIN users u2 ON kv.business_specialist_id = u2.id
+      LEFT JOIN kpi_versions kv2 ON k.id = kv2.kpi_id
+      LEFT JOIN users u4 ON kv2.data_specialist_id = u4.id
+      LEFT JOIN users u5 ON kv2.business_specialist_id = u5.id
+      GROUP BY k.id, k.name, kv.definition, kv.sql_query, kv.topics, kv.status, kv.additional_blocks, kv.created_at, u1.full_name, u2.full_name
       ORDER BY k.id
     `);
     
@@ -466,32 +469,35 @@ app.get('/api/kpis/:id', authenticateToken, async (req, res) => {
       SELECT 
         k.id,
         k.name,
-        k.definition,
-        k.sql_query as "sqlQuery",
-        k.topics,
+        kv.definition,
+        kv.sql_query as "sqlQuery",
+        kv.topics,
         u1.full_name as "dataSpecialist",
         u2.full_name as "businessSpecialist",
-        k.updated_at as "lastUpdated",
-        k.status,
-        k.additional_blocks as "additionalBlocks",
+        kv.created_at as "lastUpdated",
+        kv.status,
+        kv.additional_blocks as "additionalBlocks",
         json_agg(
           json_build_object(
-            'id', kv.id,
-            'version', kv.version_number,
-            'definition', kv.definition,
-            'sqlQuery', kv.sql_query,
-            'updatedBy', u3.full_name,
-            'updatedAt', kv.created_at,
-            'changes', kv.changes
-          ) ORDER BY kv.version_number
+            'id', kv2.id,
+            'version', kv2.version_number,
+            'definition', kv2.definition,
+            'sqlQuery', kv2.sql_query,
+            'updatedAt', kv2.created_at,
+            'changes', kv2.change_description,
+            'dataSpecialist', u4.full_name,
+            'businessSpecialist', u5.full_name
+          ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
-      LEFT JOIN users u1 ON k.data_specialist_id = u1.id
-      LEFT JOIN users u2 ON k.business_specialist_id = u2.id
-      LEFT JOIN kpi_versions kv ON k.id = kv.kpi_id
-      LEFT JOIN users u3 ON kv.updated_by = u3.id
+      INNER JOIN kpi_versions kv ON k.active_version = kv.id
+      LEFT JOIN users u1 ON kv.data_specialist_id = u1.id
+      LEFT JOIN users u2 ON kv.business_specialist_id = u2.id
+      LEFT JOIN kpi_versions kv2 ON k.id = kv2.kpi_id
+      LEFT JOIN users u4 ON kv2.data_specialist_id = u4.id
+      LEFT JOIN users u5 ON kv2.business_specialist_id = u5.id
       WHERE k.id = $1
-      GROUP BY k.id, u1.full_name, u2.full_name, k.topics, k.additional_blocks
+      GROUP BY k.id, k.name, kv.definition, kv.sql_query, kv.topics, kv.status, kv.additional_blocks, kv.created_at, u1.full_name, u2.full_name
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -607,7 +613,7 @@ app.patch('/api/users/:id/admin', authenticateToken, async (req, res) => {
 // POST Routes (existing) - now protected with authentication
 app.post('/api/kpis', authenticateToken, async (req, res) => {
   try {
-    const { name, definition, sqlQuery, topics, dataSpecialist, businessSpecialist, status, additionalBlocks } = req.body;
+    const { name, definition, sqlQuery, topics, dataSpecialist, businessSpecialist, status, additionalBlocks, changeDescription } = req.body;
     
     // Validate required fields
     if (!name || !definition || !sqlQuery || !topics || !Array.isArray(topics) || topics.length === 0) {
@@ -639,20 +645,41 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
       businessSpecialistId = businessSpecialistResult.rows[0].id;
     }
     
-    // Insert KPI with new structure (removed dashboard_preview column)
-    const result = await pool.query(`
-      INSERT INTO kpis (name, definition, sql_query, topics, data_specialist_id, business_specialist_id, status, additional_blocks)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id
-    `, [name, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, status || 'active', additionalBlocks ? JSON.stringify(additionalBlocks) : null]);
-    
-    // Create initial version
-    await pool.query(`
-      INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, updated_by, changes)
-      VALUES ($1, 1, $2, $3, $4, 'Initial version created')
-    `, [result.rows[0].id, definition, sqlQuery, req.user.id]);
-    
-    res.status(201).json({ id: result.rows[0].id, message: 'KPI created successfully' });
+    // Start a transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // First create the KPI record
+      const kpiResult = await client.query(`
+        INSERT INTO kpis (name, created_at, updated_at)
+        VALUES ($1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING id
+      `, [name]);
+      
+      const kpiId = kpiResult.rows[0].id;
+      
+      // Then create the initial KPI version
+      const versionResult = await client.query(`
+        INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, topics, data_specialist_id, business_specialist_id, status, additional_blocks, updated_by, change_description)
+        VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id
+      `, [kpiId, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, status || 'active', additionalBlocks ? JSON.stringify(additionalBlocks) : null, req.user.id, changeDescription || 'Initial version created']);
+      
+      // Update the KPI to reference the active version
+      await client.query(`
+        UPDATE kpis SET active_version = $1 WHERE id = $2
+      `, [versionResult.rows[0].id, kpiId]);
+      
+      await client.query('COMMIT');
+      
+      res.status(201).json({ id: kpiId, message: 'KPI created successfully' });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -680,7 +707,7 @@ app.post('/api/topics', authenticateToken, async (req, res) => {
 app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, definition, sqlQuery, topics, dataSpecialist, businessSpecialist, dashboardPreview, status, additionalBlocks } = req.body;
+    const { name, definition, sqlQuery, topics, dataSpecialist, businessSpecialist, status, additionalBlocks, changeDescription } = req.body;
     
     // Validate required fields
     if (!name || !definition || !sqlQuery || !topics || !Array.isArray(topics) || topics.length === 0) {
@@ -701,25 +728,42 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
     const dataSpecialistId = dataSpecialistResult.rows[0].id;
     const businessSpecialistId = businessSpecialistResult.rows[0].id;
     
-    // Update KPI with new structure
-    await pool.query(`
-      UPDATE kpis 
-      SET name = $1, definition = $2, sql_query = $3, topics = $4, 
-          data_specialist_id = $5, business_specialist_id = $6, 
-          dashboard_preview = $7, status = $8, additional_blocks = $9, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $10
-    `, [name, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, dashboardPreview, status, additionalBlocks ? JSON.stringify(additionalBlocks) : null, id]);
-    
-    // Create new version
-    const versionResult = await pool.query('SELECT MAX(version_number) as max_version FROM kpi_versions WHERE kpi_id = $1', [id]);
-    const newVersion = (versionResult.rows[0].max_version || 0) + 1;
-    
-    await pool.query(`
-      INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, updated_by, changes)
-      VALUES ($1, $2, $3, $4, $5, 'Updated via API')
-    `, [id, newVersion, definition, sqlQuery, req.user.id]);
-    
-    res.json({ message: 'KPI updated successfully' });
+    // Start a transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Update KPI name
+      await client.query(`
+        UPDATE kpis 
+        SET name = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `, [name, id]);
+      
+      // Create new version
+      const versionResult = await client.query('SELECT MAX(version_number) as max_version FROM kpi_versions WHERE kpi_id = $1', [id]);
+      const newVersion = (versionResult.rows[0].max_version || 0) + 1;
+      
+      const newVersionResult = await client.query(`
+        INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, topics, data_specialist_id, business_specialist_id, status, additional_blocks, updated_by, change_description)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id
+      `, [id, newVersion, definition, sqlQuery, JSON.stringify(topics), dataSpecialistId, businessSpecialistId, status, additionalBlocks ? JSON.stringify(additionalBlocks) : null, req.user.id, changeDescription || 'Updated via API']);
+      
+      // Update the KPI to reference the new active version
+      await client.query(`
+        UPDATE kpis SET active_version = $1 WHERE id = $2
+      `, [newVersionResult.rows[0].id, id]);
+      
+      await client.query('COMMIT');
+      
+      res.json({ message: 'KPI updated successfully' });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
