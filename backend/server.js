@@ -426,7 +426,9 @@ app.get('/api/kpis', authenticateToken, async (req, res) => {
             'updatedAt', kv2.created_at,
             'changes', kv2.change_description,
             'dataSpecialist', u4.full_name,
-            'businessSpecialist', u5.full_name
+            'businessSpecialist', u5.full_name,
+            'dataSpecialistId', kv2.data_specialist_id,
+            'businessSpecialistId', kv2.business_specialist_id
           ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
@@ -486,7 +488,9 @@ app.get('/api/kpis/:id', authenticateToken, async (req, res) => {
             'updatedAt', kv2.created_at,
             'changes', kv2.change_description,
             'dataSpecialist', u4.full_name,
-            'businessSpecialist', u5.full_name
+            'businessSpecialist', u5.full_name,
+            'dataSpecialistId', kv2.data_specialist_id,
+            'businessSpecialistId', kv2.business_specialist_id
           ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
