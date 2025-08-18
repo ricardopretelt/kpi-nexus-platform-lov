@@ -47,6 +47,73 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  // Announce pending approvals and quick-navigate
+  useEffect(() => {
+    let lastCount = 0;
+    let cancelled = false;
+
+    const announce = async () => {
+      try {
+        const items = await api.getPendingApprovals();
+        if (cancelled) return;
+        if (items.length > 0 && items.length !== lastCount) {
+          lastCount = items.length;
+          const first = items[0];
+          toast(`You have ${items.length} pending approval${items.length > 1 ? 's' : ''}`, {
+            action: {
+              label: 'Open',
+              onClick: async () => {
+                try {
+                  const kpi = await api.getKPI(String(first.kpi_id));
+                  setSelectedKPI(kpi);
+                  setCurrentPage('kpi');
+                } catch {}
+              }
+            }
+          });
+        }
+      } catch {}
+    };
+
+    announce();
+    const id = setInterval(announce, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  // Poll for KPI updates when viewing a KPI to show real-time changes
+  useEffect(() => {
+    if (currentPage !== 'kpi' || !selectedKPI) return;
+    
+    let cancelled = false;
+    
+    const pollForUpdates = async () => {
+      try {
+        if (cancelled) return;
+        console.log('🔍 Polling for KPI updates...', selectedKPI.id);
+        const refreshed = await api.getKPI(String(selectedKPI.id));
+        if (!cancelled) {
+          console.log('📊 Current status:', selectedKPI.status, 'New status:', refreshed.status);
+          // Force a re-render by creating a new object reference
+          const updatedKPI = { ...refreshed };
+          setSelectedKPI(updatedKPI);
+          setKpis(prev => prev.map(kpi => kpi.id === refreshed.id ? updatedKPI : kpi));
+          console.log('✅ KPI updated via polling');
+        }
+      } catch (error) {
+        console.error('Failed to poll for KPI updates:', error);
+      }
+    };
+
+    // Poll immediately and then every 2 seconds
+    pollForUpdates();
+    const interval = setInterval(pollForUpdates, 2000);
+    
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentPage, selectedKPI?.id]);
+
   // Add user update listener to refresh KPI data when users are updated
   useEffect(() => {
     const cleanup = onUserUpdate(() => {

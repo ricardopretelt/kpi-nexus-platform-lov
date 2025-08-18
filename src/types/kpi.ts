@@ -10,7 +10,7 @@ export interface KPI {
   dashboardPreview?: string;
   lastUpdated: string;
   versions: KPIVersion[];
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'pending' | 'rejected';
   additionalBlocks?: KPIBlock[];
 }
 
@@ -28,7 +28,7 @@ export interface KPIVersion {
   topics?: number[];
   dataSpecialistId?: number;
   businessSpecialistId?: number;
-  status?: 'active' | 'inactive';
+  status?: 'active' | 'inactive' | 'pending' | 'rejected';
   additionalBlocks?: KPIBlock[];
   changeDescription?: string;
 }

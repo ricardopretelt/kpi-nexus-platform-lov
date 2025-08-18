@@ -151,7 +151,7 @@ export const api = {
   },
 
   // POST operations (create)
-  async createKPI(kpiData: Omit<KPI, 'id' | 'lastUpdated' | 'versions'> & { changeDescription?: string }): Promise<{ id: string; message: string }> {
+  async createKPI(kpiData: Omit<KPI, 'id' | 'lastUpdated' | 'versions' | 'status'> & { changeDescription?: string }): Promise<{ id: string; message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/kpis`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -176,7 +176,7 @@ export const api = {
   },
 
   // PUT operations (update)
-  async updateKPI(id: string, kpiData: Partial<KPI> & { changeDescription?: string }): Promise<{ message: string }> {
+  async updateKPI(id: string, kpiData: Partial<Omit<KPI, 'status'>> & { changeDescription?: string }): Promise<{ message: string }> {
     const response = await fetch(`${API_BASE_URL}/api/kpis/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
@@ -228,5 +228,58 @@ export const api = {
       console.error('  - Error:', error);
       throw error;
     }
+  },
+
+  // Approvals
+  async getApprovals(versionId: string): Promise<Array<{ id: number; user_id: number; status: string }>> {
+    const response = await fetch(`${API_BASE_URL}/api/kpi-versions/${versionId}/approvals`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch approvals');
+    return response.json();
+  },
+
+  async approveKpiVersion(versionId: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/kpi-versions/${versionId}/approve`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to approve version');
+    return response.json();
+  },
+
+  async rejectKpiVersion(versionId: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/kpi-versions/${versionId}/reject`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to reject version');
+    return response.json();
+  },
+
+  // Notifications / Pending approvals
+  async getPendingApprovals(): Promise<Array<{ kpi_version_id: number; kpi_id: number; version_number: number; kpi_name: string }>> {
+    const response = await fetch(`${API_BASE_URL}/api/pending-approvals`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch pending approvals');
+    return response.json();
+  },
+
+  async getNotifications(unreadOnly: boolean = false): Promise<Array<{ id: number; type: string; message: string; kpi_version_id: number; is_read: boolean }>> {
+    const response = await fetch(`${API_BASE_URL}/api/notifications?unread=${unreadOnly}`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    return response.json();
+  },
+
+  async markNotificationRead(id: number): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to mark notification as read');
+    return response.json();
   },
 };

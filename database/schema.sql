@@ -107,3 +107,28 @@ UPDATE kpis SET active_version = 2 WHERE id = 2;
 UPDATE kpis SET active_version = 3 WHERE id = 3;
 UPDATE kpis SET active_version = 4 WHERE id = 4;
 UPDATE kpis SET active_version = 5 WHERE id = 5; 
+
+-- Approvals for KPI versions
+CREATE TABLE IF NOT EXISTS kpi_approvals (
+    id SERIAL PRIMARY KEY,
+    kpi_version_id INTEGER NOT NULL REFERENCES kpi_versions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (kpi_version_id, user_id)
+);
+
+-- Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    type VARCHAR(50) NOT NULL, -- e.g. 'approval_request', 'version_approved', 'version_rejected'
+    message TEXT NOT NULL,
+    kpi_version_id INTEGER REFERENCES kpi_versions(id) ON DELETE CASCADE,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Note: kpi_versions.status remains VARCHAR(20); now used values:
+-- 'pending_approval' | 'active' | 'inactive' | 'rejected' 
