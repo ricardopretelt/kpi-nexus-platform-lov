@@ -11,6 +11,7 @@ import { KPI } from '../types/kpi';
 import { api, Topic } from '../services/api';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import TopicsOverviewPage from './TopicsOverviewPage';
 
 type Page = 'home' | 'topics' | 'kpi' | 'users' | 'create-kpi' | 'modify-kpi';
 
@@ -208,6 +209,13 @@ const Dashboard = () => {
             onTopicSelect={handleTopicSelect} 
             onKPISelect={handleKPISelect}
             onAddKPI={handleAddKPI}
+          />
+        )}
+        {currentPage === 'topics' && !selectedTopic && (
+          <TopicsOverviewPage 
+            kpis={kpis} 
+            topics={topics}
+            onTopicSelect={handleTopicSelect}
           />
         )}
         {currentPage === 'topics' && selectedTopic && (
