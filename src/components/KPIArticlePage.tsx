@@ -155,6 +155,41 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
     }
   };
 
+  // Helper function to render status badge
+  const renderStatusBadge = (status: string) => {
+    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    let className = "";
+    
+    switch (status?.toLowerCase()) {
+      case 'active':
+        variant = "default";
+        className = "bg-green-100 text-green-800 border-green-200";
+        break;
+      case 'pending':
+        variant = "secondary";
+        className = "bg-yellow-100 text-yellow-800 border-yellow-200";
+        break;
+      case 'rejected':
+        variant = "destructive";
+        className = "bg-red-100 text-red-800 border-red-200";
+        break;
+      case 'inactive':
+        variant = "outline";
+        className = "bg-gray-100 text-gray-600 border-gray-200";
+        break;
+      default:
+        variant = "outline";
+        className = "bg-gray-100 text-gray-600 border-gray-200";
+        break;
+    }
+
+    return (
+      <Badge variant={variant} className={`${className} font-medium text-xs px-2 py-1`}>
+        {status?.toLowerCase() || 'unknown'}
+      </Badge>
+    );
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
@@ -197,7 +232,11 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
                   <Card key={version.id}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">Version {version.version}</CardTitle>
+                        <div className="flex items-center space-x-3">
+                          <CardTitle className="text-lg">Version {version.version}</CardTitle>
+                          {/* Status Badge */}
+                          {renderStatusBadge(version.status)}
+                        </div>
                         <div className="text-sm text-gray-600">
                           {formatDate(version.updatedAt)} by {formatSpecialists(version.dataSpecialist, version.businessSpecialist)}
                         </div>
