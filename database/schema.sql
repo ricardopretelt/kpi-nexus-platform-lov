@@ -19,7 +19,6 @@ CREATE TABLE topics (
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
     icon VARCHAR(10),
-    color VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -61,10 +60,10 @@ INSERT INTO users (username, email, password_hash, full_name, role, is_admin, is
 ('emily.clark', 'emily.clark@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Emily Clark', 'data_specialist', 'f', 't', 'f'),
 ('tom.brown', 'tom.brown@company.com', 'aa784089e796e8b4a4b6d3c92032c4755c6d7cf7520c7b66a722006232f05fa7', 'Tom Brown', 'business_specialist', 'f', 't', 'f');
 
-INSERT INTO topics (name, description, icon, color) VALUES
-('Customer Retention', 'KPIs related to customer loyalty, churn, and acquisition', '', 'bg-blue-500'),
-('Network Performance', 'Network uptime, quality, and performance metrics', '📡', 'bg-green-500'),
-('Revenue Streams', 'Financial metrics and revenue-related KPIs', '💰', 'bg-purple-500');
+INSERT INTO topics (name, description, icon) VALUES
+('Customer Retention', 'KPIs related to customer loyalty, churn, and acquisition', '🧑‍💼'),
+('Network Performance', 'Network uptime, quality, and performance metrics', '📡'),
+('Revenue Streams', 'Financial metrics and revenue-related KPIs', '💰');
 
 -- Insert KPIs first (without active_version initially)
 INSERT INTO kpis (name, created_at, updated_at) VALUES

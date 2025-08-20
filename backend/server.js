@@ -733,7 +733,7 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
 // Create a new topic
 app.post('/api/topics', async (req, res) => {
   try {
-    const { name, description, icon, color } = req.body;
+    const { name, description, icon } = req.body;
     
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Topic name is required' });
@@ -751,8 +751,8 @@ app.post('/api/topics', async (req, res) => {
 
     // Insert new topic
     const result = await pool.query(
-      'INSERT INTO topics (name, description, icon, color) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name.trim(), description || null, icon || '📊', color || '#3B82F6']
+      'INSERT INTO topics (name, description, icon) VALUES ($1, $2, $3) RETURNING *',
+      [name.trim(), description || null, icon || '📊']
     );
 
     const newTopic = result.rows[0];

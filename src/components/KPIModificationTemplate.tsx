@@ -250,7 +250,7 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
 
         <Card>
           <CardHeader>
-            <CardTitle>Topics & Categories</CardTitle>
+            <CardTitle>Topics</CardTitle>
             <CardDescription>Select relevant topics for this KPI</CardDescription>
           </CardHeader>
           <CardContent>
