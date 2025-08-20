@@ -730,19 +730,35 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/topics', authenticateToken, async (req, res) => {
+// Create a new topic
+app.post('/api/topics', async (req, res) => {
   try {
     const { name, description, icon, color } = req.body;
     
-    const result = await pool.query(`
-      INSERT INTO topics (name, description, icon, color)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `, [name, description, icon, color]);
-    
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Topic name is required' });
+    }
+
+    // Check if topic name already exists
+    const existingTopic = await pool.query(
+      'SELECT id FROM topics WHERE name = $1',
+      [name.trim()]
+    );
+
+    if (existingTopic.rows.length > 0) {
+      return res.status(409).json({ error: 'Topic with this name already exists' });
+    }
+
+    // Insert new topic
+    const result = await pool.query(
+      'INSERT INTO topics (name, description, icon, color) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name.trim(), description || null, icon || '📊', color || '#3B82F6']
+    );
+
+    const newTopic = result.rows[0];
+    res.status(201).json(newTopic);
+  } catch (error) {
+    console.error('Error creating topic:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

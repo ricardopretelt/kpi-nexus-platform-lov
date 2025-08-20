@@ -1,15 +1,18 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { KPI } from '../types/kpi';
 import { Topic } from '../services/api';
+import { Plus } from 'lucide-react';
 
 interface TopicsOverviewPageProps {
   kpis: KPI[];
   topics: Topic[];
   onTopicSelect: (topic: string) => void;
+  onAddTopic: () => void;
 }
 
-const TopicsOverviewPage = ({ kpis, topics, onTopicSelect }: TopicsOverviewPageProps) => {
+const TopicsOverviewPage = ({ kpis, topics, onTopicSelect, onAddTopic }: TopicsOverviewPageProps) => {
   const getTopicStats = () => {
     return topics.map(topic => ({
       ...topic,
@@ -19,12 +22,20 @@ const TopicsOverviewPage = ({ kpis, topics, onTopicSelect }: TopicsOverviewPageP
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">Topics & Categories</h1>
-        <p className="text-gray-600">
-          Browse KPIs organized by business domains and categories
-        </p>
+      {/* Header with Add Topic Button */}
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">Topics & Categories</h1>
+          <p className="text-gray-600">
+            Browse KPIs organized by business domains and categories
+          </p>
+        </div>
+        
+        {/* Add Topic Button - Top Right (matching Add KPI button styling) */}
+        <Button onClick={onAddTopic} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="mr-2 h-4 w-4" />
+          Add Topic
+        </Button>
       </div>
 
       {/* Topics Grid */}

@@ -12,8 +12,9 @@ import { api, Topic } from '../services/api';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import TopicsOverviewPage from './TopicsOverviewPage';
+import TopicCreationTemplate from './TopicCreationTemplate';
 
-type Page = 'home' | 'topics' | 'kpi' | 'users' | 'create-kpi' | 'modify-kpi';
+type Page = 'home' | 'topics' | 'kpi' | 'users' | 'create-kpi' | 'modify-kpi' | 'create-topic';
 
 const Dashboard = () => {
   const { user, hasAdminAccess, onUserUpdate } = useAuth();
@@ -153,6 +154,23 @@ const Dashboard = () => {
     setKpiToModify(null);
   };
 
+  const handleAddTopic = () => {
+    setCurrentPage('create-topic');
+  };
+
+  const handleTopicCreationSuccess = (newTopic: Topic) => {
+    // Add the new topic to the list
+    setTopics(prev => [newTopic, ...prev]);
+    
+    // Show success message and redirect to topics
+    toast.success('Topic created successfully!');
+    setCurrentPage('topics');
+  };
+
+  const handleTopicCreationCancel = () => {
+    setCurrentPage('topics');
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -183,6 +201,7 @@ const Dashboard = () => {
             kpis={kpis} 
             topics={topics}
             onTopicSelect={handleTopicSelect}
+            onAddTopic={handleAddTopic}
           />
         )}
         {currentPage === 'topics' && selectedTopic && (
@@ -206,6 +225,12 @@ const Dashboard = () => {
             kpi={kpiToModify}
             onCancel={handleKPIModificationCancel}
             onSuccess={handleKPIModificationSuccess}
+          />
+        )}
+        {currentPage === 'create-topic' && (
+          <TopicCreationTemplate 
+            onCancel={handleTopicCreationCancel}
+            onSuccess={handleTopicCreationSuccess}
           />
         )}
         {currentPage === 'users' && hasAdminAccess(user) && (
