@@ -94,7 +94,7 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim() || !formData.definition.trim() || !formData.sqlQuery.trim()) {
+    if (!formData.definition.trim() || !formData.sqlQuery.trim()) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -118,7 +118,7 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
 
     try {
       await api.updateKPI(kpi.id, {
-        name: formData.name,
+        // Remove name from the update payload since it's now immutable
         definition: formData.definition,
         sqlQuery: formData.sqlQuery,
         topics: formData.topics,
@@ -145,7 +145,6 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
         topics: formData.topics,
-        status: 'pending_approval', // Will be set by backend based on approval requirements
         additionalBlocks: additionalBlocks,
         dataSpecialistId: dsUser?.id,
         businessSpecialistId: bsUser?.id
@@ -200,14 +199,16 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="name">KPI Name *</Label>
+              <Label htmlFor="name">KPI Name</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                required
-                className="mt-1"
+                disabled
+                className="mt-1 bg-gray-50 cursor-not-allowed"
               />
+              <p className="text-sm text-gray-500 mt-1">
+                KPI names cannot be changed once created
+              </p>
             </div>
             
             <div>

@@ -237,8 +237,28 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
                           {/* Status Badge */}
                           {renderStatusBadge(version.status)}
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {formatDate(version.updatedAt)} by {formatSpecialists(version.dataSpecialist, version.businessSpecialist)}
+                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          {userHasPendingApproval && latestVersion?.id === version.id && (
+                            <>
+                              <Button
+                                onClick={handleApprove}
+                                className="bg-green-600 hover:bg-green-700"
+                                size="sm"
+                              >
+                                Approve Version
+                              </Button>
+                              <Button
+                                onClick={handleReject}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                                size="sm"
+                              >
+                                Reject Version
+                              </Button>
+                            </>
+                          )}
+                          <span>
+                            {formatDate(version.updatedAt)} by {formatSpecialists(version.dataSpecialist, version.businessSpecialist)}
+                          </span>
                         </div>
                       </div>
                       <CardDescription className="break-words">{version.changes}</CardDescription>
@@ -305,25 +325,6 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
             </DialogContent>
           </Dialog>
           
-          {/* Approval actions */}
-          {userHasPendingApproval && (
-            <>
-              <Button
-                onClick={handleApprove}
-                className="bg-green-600 hover:bg-green-700"
-                size="sm"
-              >
-                Approve Version
-              </Button>
-              <Button
-                onClick={handleReject}
-                className="bg-red-600 hover:bg-red-700 text-white"
-                size="sm"
-              >
-                Reject Version
-              </Button>
-            </>
-          )}
 
           {/* Add Modify KPI Button - Same styling as Add KPI button */}
           {canEdit() && (
