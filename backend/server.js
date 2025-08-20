@@ -757,8 +757,8 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
     console.log(`Request body:`, { name, dataSpecialist, businessSpecialist, changeDescription });
     
     // Validate required fields
-    if (!name || !definition || !sqlQuery || !topics || !Array.isArray(topics) || topics.length === 0) {
-      return res.status(400).json({ error: 'Name, definition, SQL query, and at least one topic are required' });
+    if (!definition || !sqlQuery || !topics || !Array.isArray(topics) || topics.length === 0) {
+      return res.status(400).json({ error: 'Definition, SQL query, and at least one topic are required' });
     }
     
     // Get user IDs from names
@@ -807,12 +807,12 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
       const currentActiveVersionId = currentActiveVersion.rows[0]?.active_version;
       console.log(`🔍 Current active version ID: ${currentActiveVersionId}`);
       
-      // Update KPI name
-      await client.query(`
-        UPDATE kpis 
-        SET name = $1, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-      `, [name, id]);
+      // DO NOT update KPI name - it's now immutable
+      // await client.query(`
+      //   UPDATE kpis 
+      //   SET name = $1, updated_at = CURRENT_TIMESTAMP
+      //   WHERE id = $2
+      // `, [name, id]);
       
       // Create new version
       const versionResult = await client.query('SELECT MAX(version_number) as max_version FROM kpi_versions WHERE kpi_id = $1', [id]);
@@ -923,7 +923,7 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
       res.json({ message: 'KPI updated successfully' });
     } catch (err) {
       await client.query('ROLLBACK');
-      console.error(`❌ Transaction rolled back for version ${newVersion}:`, err);
+      console.error(`❌ PUT /api/kpis/${id} failed:`, err);
       throw err;
     } finally {
       client.release();
@@ -1066,20 +1066,20 @@ app.post('/api/kpi-versions/:id/approve', authenticateToken, async (req, res) =>
     // Count actual assignees (excluding null values)
     const assigneeCount = [data_specialist_id, business_specialist_id].filter(id => id !== null).length;
     
-    // Check if there are any PENDING approvals
-    const pendingRes = await client.query(`
-      SELECT COUNT(*) as pending_count
+    // Count approved approvals (including auto-approvals)
+    const approvedRes = await client.query(`
+      SELECT COUNT(*) as approved_count
       FROM kpi_approvals
-      WHERE kpi_version_id = $1 AND status = 'pending'
+      WHERE kpi_version_id = $1 AND status = 'approved'
     `, [versionId]);
     
-    const pendingCount = Number(pendingRes.rows[0].pending_count);
+    const approvedCount = Number(approvedRes.rows[0].approved_count);
     
-    // Version is approved when there are NO pending approvals
-    const allApproved = pendingCount === 0;
+    // Version is approved when ALL assignees have approved
+    const allApproved = approvedCount >= assigneeCount;
     
-    console.log(`Version ${version_number}: ${assigneeCount} total assignees, ${pendingCount} pending approvals`);
-    console.log(`All approved: ${allApproved} (no pending approvals)`);
+    console.log(`Version ${version_number}: ${assigneeCount} total assignees, ${approvedCount} approved approvals`);
+    console.log(`All approved: ${allApproved} (${approvedCount}/${assigneeCount} approvals received)`);
 
     if (allApproved) {
       const prev = await client.query('SELECT active_version FROM kpis WHERE id = $1', [kpi_id]);
@@ -1106,9 +1106,9 @@ app.post('/api/kpi-versions/:id/approve', authenticateToken, async (req, res) =>
         `, [row.user_id, `Version ${version_number} has been activated`, versionId]);
       }
       
-      console.log(`Version ${version_number} activated - no pending approvals`);
+      console.log(`Version ${version_number} activated - all ${assigneeCount} assignees have approved`);
     } else {
-      console.log(`Version ${version_number} still has ${pendingCount} pending approvals`);
+      console.log(`Version ${version_number} still needs ${assigneeCount - approvedCount} more approvals`);
     }
 
     await client.query('COMMIT');

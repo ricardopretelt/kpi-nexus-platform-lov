@@ -6,13 +6,14 @@ import { Topic } from '../services/api';
 import { Clock, TrendingUp, Users, Database, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { NotificationButton } from './NotificationButton';
 
 interface HomePageProps {
   kpis: KPI[];
   topics: Topic[];
   onTopicSelect: (topic: string) => void;
   onKPISelect: (kpi: KPI) => void;
-  onAddKPI: () => void; // New prop
+  onAddKPI: () => void;
 }
 
 const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePageProps) => {
@@ -55,10 +56,16 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
         </div>
         
         {/* Add KPI Button - Top Right (opposite side of sidebar) */}
-        <Button onClick={onAddKPI} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="mr-2 h-4 w-4" />
-          Add KPI
-        </Button>
+        <div className="flex items-center space-x-2">
+          <NotificationButton onReviewKPI={(kpiId) => {
+            const kpi = kpis.find(k => k.id === kpiId);
+            if (kpi) onKPISelect(kpi);
+          }} />
+          <Button onClick={onAddKPI} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-2 h-4 w-4" />
+            Add KPI
+          </Button>
+        </div>
       </div>
 
       {/* Stats Overview */}

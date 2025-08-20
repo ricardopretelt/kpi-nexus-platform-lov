@@ -48,39 +48,6 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Announce pending approvals and quick-navigate
-  useEffect(() => {
-    let lastCount = 0;
-    let cancelled = false;
-
-    const announce = async () => {
-      try {
-        const items = await api.getPendingApprovals();
-        if (cancelled) return;
-        if (items.length > 0 && items.length !== lastCount) {
-          lastCount = items.length;
-          const first = items[0];
-          toast(`You have ${items.length} pending approval${items.length > 1 ? 's' : ''}`, {
-            action: {
-              label: 'Open',
-              onClick: async () => {
-                try {
-                  const kpi = await api.getKPI(String(first.kpi_id));
-                  setSelectedKPI(kpi);
-                  setCurrentPage('kpi');
-                } catch {}
-              }
-            }
-          });
-        }
-      } catch {}
-    };
-
-    announce();
-    const id = setInterval(announce, 30000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
   // Poll for KPI updates when viewing a KPI to show real-time changes
   useEffect(() => {
     if (currentPage !== 'kpi' || !selectedKPI) return;
