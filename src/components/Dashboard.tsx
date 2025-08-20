@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import HomePage from './HomePage';
 import TopicsPage from './TopicsPage';
+import KPIsListPage from './KPIsListPage';
 import KPIArticlePage from './KPIArticlePage';
 import KPICreationTemplate from './KPICreationTemplate';
 import UserManagement from './UserManagement';
@@ -14,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import TopicsOverviewPage from './TopicsOverviewPage';
 import TopicCreationTemplate from './TopicCreationTemplate';
 
-type Page = 'home' | 'topics' | 'kpi' | 'users' | 'create-kpi' | 'modify-kpi' | 'create-topic';
+type Page = 'home' | 'topics' | 'kpis' | 'kpi' | 'users' | 'create-kpi' | 'modify-kpi' | 'create-topic';
 
 const Dashboard = () => {
   const { user, hasAdminAccess, onUserUpdate } = useAuth();
@@ -206,6 +207,13 @@ const Dashboard = () => {
         )}
         {currentPage === 'topics' && selectedTopic && (
           <TopicsPage topic={selectedTopic} kpis={kpis} onKPISelect={handleKPISelect} />
+        )}
+        {currentPage === 'kpis' && (
+          <KPIsListPage 
+            kpis={kpis} 
+            topics={topics}
+            onKPISelect={handleKPISelect}
+          />
         )}
         {currentPage === 'kpi' && selectedKPI && (
           <KPIArticlePage 
