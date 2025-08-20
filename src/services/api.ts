@@ -163,16 +163,31 @@ export const api = {
     return response.json();
   },
 
-  async createTopic(topicData: Omit<Topic, 'id'>): Promise<Topic> {
-    const response = await fetch(`${API_BASE_URL}/api/topics`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(topicData),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to create topic');
+  async createTopic(topicData: {
+    name: string;
+    description?: string | null;
+    icon?: string | null;
+    color?: string | null;
+  }): Promise<Topic> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/topics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(topicData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create topic: ${response.statusText}`);
+      }
+
+      const newTopic = await response.json();
+      return newTopic;
+    } catch (error) {
+      console.error('Error creating topic:', error);
+      throw error;
     }
-    return response.json();
   },
 
   // PUT operations (update)
