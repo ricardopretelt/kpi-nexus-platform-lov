@@ -1,11 +1,11 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { Home, FolderOpen, FileText, Users, LogOut, Signal } from 'lucide-react';
+import { Home, FolderOpen, FileText, Users, LogOut, Signal, BarChart3 } from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
-  onNavigate: (page: 'home' | 'topics' | 'kpi' | 'users') => void;
+  onNavigate: (page: 'home' | 'topics' | 'kpis' | 'kpi' | 'users') => void;
   userRole: string;
 }
 
@@ -21,6 +21,7 @@ const Sidebar = ({ currentPage, onNavigate, userRole }: SidebarProps) => {
   const navigationItems = [
     { id: 'home', label: 'Home', icon: Home, available: true },
     { id: 'topics', label: 'Topics', icon: FolderOpen, available: true },
+    { id: 'kpis', label: 'KPIs', icon: BarChart3, available: true },
     { id: 'users', label: 'User Management', icon: Users, available: hasAdminAccess(user) },
   ];
 
