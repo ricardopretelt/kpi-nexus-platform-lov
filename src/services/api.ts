@@ -48,9 +48,10 @@ const getAuthHeaders = () => {
 export interface Topic {
   id: number;
   name: string;
-  description: string;
-  icon: string;
-  color: string;
+  description: string | null;
+  icon: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export const api = {
@@ -167,7 +168,6 @@ export const api = {
     name: string;
     description?: string | null;
     icon?: string | null;
-    color?: string | null;
   }): Promise<Topic> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/topics`, {

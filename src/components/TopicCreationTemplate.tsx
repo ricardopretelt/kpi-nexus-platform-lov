@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api, Topic } from '../services/api';
 import { toast } from 'sonner';
 
@@ -13,20 +14,48 @@ interface TopicCreationTemplateProps {
   onSuccess: (topic: Topic) => void;
 }
 
+// Professional icons for telecom/BI settings
+const PROFESSIONAL_ICONS = [
+  { value: '📊', label: 'Analytics Chart' },
+  { value: '📈', label: 'Trending Up' },
+  { value: '📉', label: 'Trending Down' },
+  { value: '📡', label: 'Network Signal' },
+  { value: '🌐', label: 'Global Network' },
+  { value: '💻', label: 'Computer' },
+  { value: '📱', label: 'Mobile Device' },
+  { value: '🔌', label: 'Connection' },
+  { value: '⚡', label: 'Performance' },
+  { value: '🎯', label: 'Target' },
+  { value: '💰', label: 'Revenue' },
+  { value: '🔍', label: 'Search' },
+  { value: '📋', label: 'Report' },
+  { value: '🌍', label: 'Global' },
+  { value: '🏢', label: 'Business' },
+  { value: '👥', label: 'Team' },
+  { value: '🎨', label: 'Custom' }
+];
+
 const TopicCreationTemplate = ({ onCancel, onSuccess }: TopicCreationTemplateProps) => {
   const { user } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    icon: '📊',
-    color: '#3B82F6'
+    icon: '📊'
   });
   
+  const [showCustomIcon, setShowCustomIcon] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Show custom icon input if user selects "Custom"
+    if (field === 'icon' && value === '🎨') {
+      setShowCustomIcon(true);
+    } else if (field === 'icon') {
+      setShowCustomIcon(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,8 +72,7 @@ const TopicCreationTemplate = ({ onCancel, onSuccess }: TopicCreationTemplatePro
       const newTopic = await api.createTopic({
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-        icon: formData.icon || '📊',
-        color: formData.color || '#3B82F6'
+        icon: formData.icon || '📊'
       });
       
       toast.success('Topic created successfully!');
@@ -110,52 +138,56 @@ const TopicCreationTemplate = ({ onCancel, onSuccess }: TopicCreationTemplatePro
           <Card>
             <CardHeader>
               <CardTitle>Visual Customization</CardTitle>
-              <CardDescription>Customize how this topic appears in the interface</CardDescription>
+              <CardDescription>Choose an icon to represent this topic</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="icon" className="text-sm font-medium">
-                    Icon (Emoji)
-                  </Label>
-                  <Input
-                    id="icon"
-                    type="text"
-                    value={formData.icon}
-                    onChange={(e) => handleInputChange('icon', e.target.value)}
-                    placeholder="📊"
-                    className="mt-1"
-                    maxLength={10}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Use emojis or text symbols to represent this topic
-                  </p>
-                </div>
+              <div>
+                <Label htmlFor="icon" className="text-sm font-medium">
+                  Icon Selection
+                </Label>
+                <Select value={formData.icon} onValueChange={(value) => handleInputChange('icon', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select an icon" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROFESSIONAL_ICONS.map((icon) => (
+                      <SelectItem key={icon.value} value={icon.value}>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">{icon.value}</span>
+                          <span className="text-sm text-gray-600">{icon.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 
-                <div>
-                  <Label htmlFor="color" className="text-sm font-medium">
-                    Color
-                  </Label>
-                  <div className="mt-1 flex items-center space-x-2">
+                {/* Custom Icon Input */}
+                {showCustomIcon && (
+                  <div className="mt-3">
+                    <Label htmlFor="customIcon" className="text-sm font-medium text-gray-700">
+                      Custom Icon (Emoji or Symbol)
+                    </Label>
                     <Input
-                      id="color"
-                      type="color"
-                      value={formData.color}
-                      onChange={(e) => handleInputChange('color', e.target.value)}
-                      className="w-16 h-10 p-1 border border-gray-300 rounded"
-                    />
-                    <Input
+                      id="customIcon"
                       type="text"
-                      value={formData.color}
-                      onChange={(e) => handleInputChange('color', e.target.value)}
-                      placeholder="#3B82F6"
-                      className="flex-1"
+                      value={formData.icon === '🎨' ? '' : formData.icon}
+                      onChange={(e) => handleInputChange('icon', e.target.value)}
+                      placeholder="Paste your custom icon here..."
+                      className="mt-1"
+                      maxLength={10}
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Copy and paste any emoji or symbol from your keyboard or emoji picker
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Choose a color that represents this topic
-                  </p>
-                </div>
+                )}
+                
+                <p className="mt-2 text-xs text-gray-500">
+                  {showCustomIcon 
+                    ? 'Enter your custom icon above'
+                    : 'Choose from professional icons or select "Custom" to add your own'
+                  }
+                </p>
               </div>
             </CardContent>
           </Card>

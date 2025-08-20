@@ -58,7 +58,7 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
         {/* Add KPI Button - Top Right (opposite side of sidebar) */}
         <div className="flex items-center space-x-2">
           <NotificationButton onReviewKPI={(kpiId) => {
-            const kpi = kpis.find(k => k.id === kpiId);
+            const kpi = kpis.find(k => k.id === String(kpiId));
             if (kpi) onKPISelect(kpi);
           }} />
           <Button onClick={onAddKPI} className="bg-blue-600 hover:bg-blue-700">
@@ -125,7 +125,7 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
         {/* Topics Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Topics & Categories</CardTitle>
+            <CardTitle>Topics</CardTitle>
             <CardDescription>
               Browse KPIs organized by business domains
             </CardDescription>
@@ -138,7 +138,9 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
                 onClick={() => onTopicSelect(topic.id.toString())}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 ${topic.color} rounded-lg flex items-center justify-center text-white text-lg`}>
+                  <div 
+                    className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 text-lg"
+                  >
                     {topic.icon}
                   </div>
                   <div>

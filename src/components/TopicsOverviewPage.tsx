@@ -25,7 +25,7 @@ const TopicsOverviewPage = ({ kpis, topics, onTopicSelect, onAddTopic }: TopicsO
       {/* Header with Add Topic Button */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Topics & Categories</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Topics</h1>
           <p className="text-gray-600">
             Browse KPIs organized by business domains and categories
           </p>
@@ -48,7 +48,9 @@ const TopicsOverviewPage = ({ kpis, topics, onTopicSelect, onAddTopic }: TopicsO
           >
             <CardHeader className="pb-3">
               <div className="flex items-center space-x-3">
-                <div className={`w-12 h-12 ${topic.color} rounded-lg flex items-center justify-center text-white text-xl`}>
+                <div 
+                  className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 text-xl"
+                >
                   {topic.icon}
                 </div>
                 <div className="flex-1">
