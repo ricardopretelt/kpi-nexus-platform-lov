@@ -43,7 +43,7 @@ const getApiBaseUrl = () => {
   }
   
   // If running on server (production)
-  if (hostname === '18.217.206.5' || hostname.includes('ip-')) {
+  if (hostname === '13.58.194.74' || hostname.includes('ip-')) {
     return `http://${hostname}:3001`;
   }
   
