@@ -172,18 +172,16 @@ export const api = {
     try {
       const response = await fetch(`${API_BASE_URL}/api/topics`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(), // <-- send Authorization + Content-Type
         body: JSON.stringify(topicData),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create topic: ${response.statusText}`);
+        const errText = await response.text();
+        throw new Error(`Failed to create topic: ${response.status} ${errText}`);
       }
 
-      const newTopic = await response.json();
-      return newTopic;
+      return await response.json();
     } catch (error) {
       console.error('Error creating topic:', error);
       throw error;
