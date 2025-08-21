@@ -23,10 +23,18 @@ CREATE TABLE topics (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- KPIs table - Create SECOND (references kpi_versions)
+CREATE TABLE kpis (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- KPI Versions table - Create FIRST (no dependencies)
 CREATE TABLE kpi_versions (
     id SERIAL PRIMARY KEY,
-    kpi_id INTEGER, -- Will reference kpis table
+    kpi_id INTEGER NOT NULL REFERENCES kpis(id) ON DELETE CASCADE,
     version_number INTEGER NOT NULL,
     definition TEXT NOT NULL,
     sql_query TEXT NOT NULL,
@@ -40,18 +48,36 @@ CREATE TABLE kpi_versions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- KPIs table - Create SECOND (references kpi_versions)
-CREATE TABLE kpis (
+-- KPI Active Versions mapping table (eliminates circular dependency)
+CREATE TABLE kpi_active_versions (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    active_version INTEGER REFERENCES kpi_versions(id),
+    kpi_id INTEGER NOT NULL REFERENCES kpis(id) ON DELETE CASCADE,
+    kpi_version_id INTEGER NOT NULL REFERENCES kpi_versions(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    UNIQUE(kpi_id) -- Ensures only one active version per KPI
 );
 
--- Now add the foreign key constraint to kpi_versions
-ALTER TABLE kpi_versions ADD CONSTRAINT fk_kpi_versions_kpi_id 
-    FOREIGN KEY (kpi_id) REFERENCES kpis(id) ON DELETE CASCADE;
+-- Approvals for KPI versions
+CREATE TABLE IF NOT EXISTS kpi_approvals (
+    id SERIAL PRIMARY KEY,
+    kpi_version_id INTEGER NOT NULL REFERENCES kpi_versions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (kpi_version_id, user_id)
+);
+
+-- Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    type VARCHAR(50) NOT NULL, -- e.g. 'approval_request', 'version_approved', 'version_rejected'
+    message TEXT NOT NULL,
+    kpi_version_id INTEGER REFERENCES kpi_versions(id) ON DELETE CASCADE,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Insert initial data
 INSERT INTO users (username, email, password_hash, full_name, role, is_admin, is_active, force_password_change) VALUES
@@ -73,7 +99,7 @@ INSERT INTO kpis (name, created_at, updated_at) VALUES
 ('Customer Acquisition Cost (CAC)', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('Data Usage Per Subscriber', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
--- Insert KPI versions with proper kpi_id references
+-- Insert KPI versions (can reference kpis safely)
 INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, topics, data_specialist_id, business_specialist_id, status, additional_blocks, updated_by, change_description) VALUES
 (1, 1, 'Percentage of customers leaving the service monthly. This metric helps track customer retention and identify potential issues in service quality or customer satisfaction.', 
 'SELECT (COUNT(CASE WHEN status = ''churned'' THEN 1 END) * 100.0) / COUNT(*) as churn_rate FROM customer_data WHERE date_trunc(''month'', churn_date) = date_trunc(''month'', CURRENT_DATE) GROUP BY date_trunc(''month'', churn_date);',
@@ -100,34 +126,13 @@ INSERT INTO kpi_versions (kpi_id, version_number, definition, sql_query, topics,
 '[2]', 1, 2, 'active',
 '[{"id": "dashboard-data-usage", "title": "", "subtitle": "", "text": "", "endContent": "image", "imageUrl": "/placeholder.svg?height=200&width=400&text=Data+Usage+Trends"}]', 1, 'Initial version created');
 
--- Now update KPIs to reference their active versions
-UPDATE kpis SET active_version = 1 WHERE id = 1;
-UPDATE kpis SET active_version = 2 WHERE id = 2;
-UPDATE kpis SET active_version = 3 WHERE id = 3;
-UPDATE kpis SET active_version = 4 WHERE id = 4;
-UPDATE kpis SET active_version = 5 WHERE id = 5; 
-
--- Approvals for KPI versions
-CREATE TABLE IF NOT EXISTS kpi_approvals (
-    id SERIAL PRIMARY KEY,
-    kpi_version_id INTEGER NOT NULL REFERENCES kpi_versions(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    status VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (kpi_version_id, user_id)
-);
-
--- Notifications
-CREATE TABLE IF NOT EXISTS notifications (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    type VARCHAR(50) NOT NULL, -- e.g. 'approval_request', 'version_approved', 'version_rejected'
-    message TEXT NOT NULL,
-    kpi_version_id INTEGER REFERENCES kpi_versions(id) ON DELETE CASCADE,
-    is_read BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Insert active version mappings (establishes the active versions without UPDATEs)
+INSERT INTO kpi_active_versions (kpi_id, kpi_version_id) VALUES
+(1, 1), -- Customer Churn Rate -> version 1
+(2, 2), -- ARPU -> version 2  
+(3, 3), -- Network Availability -> version 3
+(4, 4), -- CAC -> version 4
+(5, 5); -- Data Usage -> version 5
 
 -- Note: kpi_versions.status remains VARCHAR(20); now used values:
--- 'pending_approval' | 'active' | 'inactive' | 'rejected' 
+-- 'pending' | 'active' | 'inactive' | 'rejected' 

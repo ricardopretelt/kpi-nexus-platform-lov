@@ -434,7 +434,8 @@ app.get('/api/kpis', authenticateToken, async (req, res) => {
           ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
-      INNER JOIN kpi_versions kv ON k.active_version = kv.id
+      INNER JOIN kpi_active_versions kav ON k.id = kav.kpi_id
+      INNER JOIN kpi_versions kv ON kav.kpi_version_id = kv.id
       LEFT JOIN users u1 ON kv.data_specialist_id = u1.id
       LEFT JOIN users u2 ON kv.business_specialist_id = u2.id
       LEFT JOIN kpi_versions kv2 ON k.id = kv2.kpi_id
@@ -498,7 +499,8 @@ app.get('/api/kpis/:id', authenticateToken, async (req, res) => {
           ) ORDER BY kv2.version_number
         ) as versions
       FROM kpis k
-      INNER JOIN kpi_versions kv ON k.active_version = kv.id
+      INNER JOIN kpi_active_versions kav ON k.id = kav.kpi_id
+      INNER JOIN kpi_versions kv ON kav.kpi_version_id = kv.id
       LEFT JOIN users u1 ON kv.data_specialist_id = u1.id
       LEFT JOIN users u2 ON kv.business_specialist_id = u2.id
       LEFT JOIN kpi_versions kv2 ON k.id = kv2.kpi_id
@@ -694,8 +696,10 @@ app.post('/api/kpis', authenticateToken, async (req, res) => {
       
       // Set as current version (will display "pending" if approvals are needed)
       await client.query(`
-        UPDATE kpis SET active_version = $1 WHERE id = $2
-      `, [versionResult.rows[0].id, kpiId]);
+        INSERT INTO kpi_active_versions (kpi_id, kpi_version_id)
+        VALUES ($1, $2)
+        ON CONFLICT (kpi_id) DO UPDATE SET kpi_version_id = $2
+      `, [kpiId, versionResult.rows[0].id]);
 
       // If approvals are needed, create approval tasks + notifications
       if (!onlyCreatorAssigned) {
@@ -819,8 +823,12 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
       await client.query('BEGIN');
       
       // Check current active version BEFORE making changes
-      const currentActiveVersion = await client.query('SELECT active_version FROM kpis WHERE id = $1', [id]);
-      const currentActiveVersionId = currentActiveVersion.rows[0]?.active_version;
+      const currentActiveVersion = await client.query(`
+        SELECT kav.kpi_version_id 
+        FROM kpi_active_versions kav 
+        WHERE kav.kpi_id = $1
+      `, [id]);
+      const currentActiveVersionId = currentActiveVersion.rows[0]?.kpi_version_id;
       console.log(`🔍 Current active version ID: ${currentActiveVersionId}`);
       
       // DO NOT update KPI name - it's now immutable
