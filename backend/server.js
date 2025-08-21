@@ -839,11 +839,11 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
       console.log(`🔍 Current active version ID: ${currentActiveVersionId}`);
       
       // DO NOT update KPI name - it's now immutable
-      // await client.query(`
-      //   UPDATE kpis 
-      //   SET name = $1, updated_at = CURRENT_TIMESTAMP
-      //   WHERE id = $2
-      // `, [name, id]);
+      await client.query(`
+        UPDATE kpis 
+        SET updated_by = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+      `, [creatorId, id]);
       
       // Create new version with audit trail
       const newVersionResult = await client.query(`
