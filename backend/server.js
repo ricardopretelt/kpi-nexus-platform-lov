@@ -4,6 +4,37 @@ const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 const { hashPassword, verifyPassword } = require('./consistent-hash');
 require('dotenv').config();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = './uploads/images/';
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure storage
+const storage = multer.diskStorage({
+  destination: uploadsDir,
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-randomnumber.extension
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -1287,6 +1318,39 @@ app.get('/api/pending-approvals', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Upload endpoint
+app.post('/api/upload/image', authenticateToken, upload.single('image'), (req, res) => {
+  console.log('🖼️ Image upload request received');
+  console.log('📁 File:', req.file);
+  console.log('🔑 User:', req.user);
+  console.log('📋 Headers:', req.headers);
+  
+  try {
+    if (!req.file) {
+      console.log('❌ No file in request');
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+    
+    // Save to database: kpi_versions.additional_blocks field
+    const imageUrl = `/uploads/images/${req.file.filename}`;
+    
+    console.log('✅ Upload successful, returning:', imageUrl);
+    res.json({ 
+      success: true, 
+      imageUrl: imageUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size
+    });
+  } catch (err) {
+    console.error('❌ Upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// Serve images via URL
+app.use('/uploads', express.static('uploads'));
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

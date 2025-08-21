@@ -14,7 +14,8 @@ RUN npm ci
 FROM base AS backend
 WORKDIR /app
 COPY backend/package*.json ./
-RUN npm ci
+# RUN npm ci # Used before npm install
+RUN npm install  # ✅ Change this from "npm ci" to "npm install"
 COPY backend/ .
 EXPOSE 3001
 CMD ["npm", "start"]

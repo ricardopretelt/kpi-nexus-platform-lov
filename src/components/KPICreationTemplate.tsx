@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { KPI, KPIBlock } from '../types/kpi';
 import { api, Topic } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { AdditionalBlocks } from './AdditionalBlocks';
 
 interface KPICreationTemplateProps {
   onCancel: () => void;
@@ -33,11 +34,12 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     changeDescription: '' // New field for change description
   });
   
-  const [additionalBlocks, setAdditionalBlocks] = useState<KPIBlock[]>([]); // Start with empty array instead of default block
   const [topics, setTopics] = useState<Topic[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [selectedEndContent, setSelectedEndContent] = useState<'none' | 'text' | 'image'>('none');
+  const [endContentData, setEndContentData] = useState<any>({ text: '', images: [] });
 
   // Load topics and users on component mount
   useEffect(() => {
@@ -82,27 +84,6 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
     }));
   };
 
-  const addAdditionalBlock = () => {
-    const newBlock: KPIBlock = {
-      id: `block-${Date.now()}`,
-      title: '',
-      subtitle: '',
-      text: '',
-      endContent: 'none'
-    };
-    setAdditionalBlocks(prev => [...prev, newBlock]);
-  };
-
-  const removeAdditionalBlock = (blockId: string) => {
-    setAdditionalBlocks(prev => prev.filter(block => block.id !== blockId));
-  };
-
-  const updateAdditionalBlock = (blockId: string, field: keyof KPIBlock, value: string) => {
-    setAdditionalBlocks(prev => prev.map(block => 
-      block.id === blockId ? { ...block, [field]: value } : block
-    ));
-  };
-
   const getOppositeRoleUsers = () => {
     if (!user) return [];
     
@@ -138,7 +119,8 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
         topics: formData.topics,
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
-        additionalBlocks: additionalBlocks,
+        // ✅ Use endContentData instead of additionalBlocks
+        additionalBlocks: selectedEndContent !== 'none' ? endContentData : undefined,
         changeDescription: formData.changeDescription || 'Initial version created'
       };
       
@@ -173,12 +155,14 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
             dataSpecialistId: dsUser?.id,
             businessSpecialistId: bsUser?.id,
             topics: formData.topics,
-            status: 'pending', // Will be set by backend based on approval requirements
-            additionalBlocks: additionalBlocks.length > 0 ? additionalBlocks : undefined
+            status: 'pending',
+            // ✅ Use endContentData instead of additionalBlocks
+            additionalBlocks: selectedEndContent !== 'none' ? endContentData : undefined
           }
         ],
-        status: 'pending', // Will be set by backend based on approval requirements
-        additionalBlocks: additionalBlocks.length > 0 ? additionalBlocks : undefined // Only include if there are actual blocks
+        status: 'pending',
+        // ✅ Use endContentData instead of additionalBlocks
+        additionalBlocks: selectedEndContent !== 'none' ? endContentData : undefined
       };
       
       onSuccess(newKPI);
@@ -210,7 +194,7 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
           <p className="mt-2 text-gray-600">Define a new Key Performance Indicator for your organization</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Block 1: KPI Definition (Required) */}
           <Card>
             <CardHeader>
@@ -380,118 +364,42 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
             </CardContent>
           </Card>
 
-          {/* Block 6: Add Additional Block Button - INSIDE THE FORM */}
-          <Card>
-            <CardContent className="pt-6">
-              <Button
-                variant="outline"
-                onClick={addAdditionalBlock}
-                className="w-full"
-                type="button"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Additional Block
-              </Button>
-            </CardContent>
-          </Card>
+          {/* End Content Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              End Content
+            </label>
+            <select
+              value={selectedEndContent}
+              onChange={(e) => setSelectedEndContent(e.target.value as 'none' | 'text' | 'image')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="none">None</option>
+              <option value="text">Text</option>
+              <option value="image">Image</option>
+            </select>
+          </div>
 
-          {/* Block 7: Additional Content Blocks - INSIDE THE FORM */}
-          {additionalBlocks.map((block, index) => (
-            <Card key={block.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center">
-                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-medium mr-2">Optional</span>
-                    Additional Block {index + 1}
-                  </CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeAdditionalBlock(block.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CardDescription>
-                  Custom content block for additional information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Title (optional)</Label>
-                  <Input
-                    value={block.title || ''}
-                    onChange={(e) => updateAdditionalBlock(block.id, 'title', e.target.value)}
-                    placeholder="Block title..."
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Subtitle (optional)</Label>
-                  <Input
-                    value={block.subtitle || ''}
-                    onChange={(e) => updateAdditionalBlock(block.id, 'subtitle', e.target.value)}
-                    placeholder="Block subtitle..."
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Text (optional)</Label>
-                  <Textarea
-                    value={block.text || ''}
-                    onChange={(e) => updateAdditionalBlock(block.id, 'text', e.target.value)}
-                    placeholder="Block content..."
-                    className="mt-1 min-h-24"
-                  />
-                </div>
-                
-                <div>
-                  <Label>End Content</Label>
-                  <Select
-                    value={block.endContent}
-                    onValueChange={(value: 'code' | 'image' | 'none') => 
-                      updateAdditionalBlock(block.id, 'endContent', value)
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="code">Code</SelectItem>
-                      <SelectItem value="image">Image</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  {block.endContent === 'code' && (
-                    <div className="mt-2">
-                      <Label>Code Content</Label>
-                      <Textarea
-                        value={block.codeContent || ''}
-                        onChange={(e) => updateAdditionalBlock(block.id, 'codeContent', e.target.value)}
-                        placeholder="Enter code..."
-                        className="min-h-24 font-mono text-sm"
-                      />
-                    </div>
-                  )}
-                  
-                  {block.endContent === 'image' && (
-                    <div className="mt-2">
-                      <Label>Image URL</Label>
-                      <Input
-                        value={block.imageUrl || ''}
-                        onChange={(e) => updateAdditionalBlock(block.id, 'imageUrl', e.target.value)}
-                        placeholder="Enter image URL..."
-                        className="mt-1"
-                      />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {/* Conditional Additional Blocks - BEFORE the submit button */}
+          {selectedEndContent === 'image' && (
+            <div className="mt-4">
+              <AdditionalBlocks
+                value={endContentData}
+                onChange={setEndContentData}
+                type="image"
+              />
+            </div>
+          )}
+
+          {selectedEndContent === 'text' && (
+            <div className="mt-4">
+              <AdditionalBlocks
+                value={endContentData}
+                onChange={setEndContentData}
+                type="text"
+              />
+            </div>
+          )}
 
           {/* Actions */}
           <Card>

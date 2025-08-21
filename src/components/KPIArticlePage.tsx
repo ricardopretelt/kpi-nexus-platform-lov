@@ -374,60 +374,130 @@ const KPIArticlePage = ({ kpi, onUpdate, onNavigateToModify }: KPIArticlePagePro
             </CardContent>
           </Card>
 
-          {/* Additional Blocks */}
-          {kpi.additionalBlocks && kpi.additionalBlocks.length > 0 && (
-            <div className="space-y-4">
-              {kpi.additionalBlocks.map((block, index) => (
-                <Card key={block.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center">
-                      {block.endContent === 'image' && (
+          {/* Additional Blocks - Handle both old and new formats */}
+          {kpi.additionalBlocks && (
+            // Check if it's the new format (object with images/text)
+            (kpi.additionalBlocks as any).images || (kpi.additionalBlocks as any).text ? (
+              <div className="space-y-4">
+                {/* New format: direct images and text */}
+                {(kpi.additionalBlocks as any).text && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <span className="mr-2">📝</span>
+                        Additional Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-700 leading-relaxed">{(kpi.additionalBlocks as any).text}</p>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {(kpi.additionalBlocks as any).images && (kpi.additionalBlocks as any).images.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
                         <Image className="mr-2 h-5 w-5" />
-                      )}
-                      {block.title || `Additional Information ${index + 1}`}
-                    </CardTitle>
-                    {block.subtitle && (
-                      <CardDescription>{block.subtitle}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {block.text && (
-                      <p className="text-gray-700 leading-relaxed">{block.text}</p>
-                    )}
-                    
-                    {block.endContent === 'code' && block.codeContent && (
-                      <div>
-                        <h4 className="font-medium mb-2">Code</h4>
-                        <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
-                          {block.codeContent}
-                        </pre>
+                        Additional Images
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(kpi.additionalBlocks as any).images.map((imagePath: string, index: number) => {
+                          // ✅ Resolve image URL based on environment
+                          const getImageUrl = (path: string) => {
+                            if (path.startsWith('/uploads/')) {
+                              const hostname = window.location.hostname;
+                              if (hostname === 'localhost') {
+                                return `http://localhost:3001${path}`;
+                              } else if (hostname === '18.217.206.5') {
+                                return `http://18.217.206.5:3001${path}`;
+                              }
+                            }
+                            return path;
+                          };
+                          
+                          return (
+                            <div key={index} className="bg-gray-100 rounded-lg p-4">
+                              <img
+                                src={getImageUrl(imagePath)}
+                                alt={`Additional image ${index + 1}`}
+                                className="w-full h-48 object-cover rounded-lg"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <div className="hidden text-center text-gray-500 py-8">
+                                <Image className="mx-auto h-12 w-12 mb-2 text-gray-400" />
+                                <p>Image preview not available</p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    )}
-                    
-                    {block.endContent === 'image' && block.imageUrl && (
-                      <div>
-                        <h4 className="font-medium mb-2">Image</h4>
-                        <div className="bg-gray-100 rounded-lg p-4">
-                          <img
-                            src={block.imageUrl}
-                            alt="Additional content"
-                            className="w-full h-48 object-cover rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                          <div className="hidden text-center text-gray-500 py-8">
-                            <Image className="mx-auto h-12 w-12 mb-2 text-gray-400" />
-                            <p>Image preview not available</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              // Old format: array of blocks
+              Array.isArray(kpi.additionalBlocks) && kpi.additionalBlocks.length > 0 && (
+                <div className="space-y-4">
+                  {kpi.additionalBlocks.map((block, index) => (
+                    <Card key={block.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center">
+                          {block.endContent === 'image' && (
+                            <Image className="mr-2 h-5 w-5" />
+                          )}
+                          {block.title || `Additional Information ${index + 1}`}
+                        </CardTitle>
+                        {block.subtitle && (
+                          <CardDescription>{block.subtitle}</CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {block.text && (
+                          <p className="text-gray-700 leading-relaxed">{block.text}</p>
+                        )}
+                        
+                        {block.endContent === 'code' && block.codeContent && (
+                          <div>
+                            <h4 className="font-medium mb-2">Code</h4>
+                            <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
+                              {block.codeContent}
+                            </pre>
                           </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                        )}
+                        
+                        {block.endContent === 'image' && block.imageUrl && (
+                          <div>
+                            <h4 className="font-medium mb-2">Image</h4>
+                            <div className="bg-gray-100 rounded-lg p-4">
+                              <img
+                                src={block.imageUrl}
+                                alt="Additional content"
+                                className="w-full h-48 object-cover rounded-lg"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <div className="hidden text-center text-gray-500 py-8">
+                                <Image className="mx-auto h-12 w-12 mb-2 text-gray-400" />
+                                <p>Image preview not available</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            )
           )}
         </div>
 

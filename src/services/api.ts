@@ -297,4 +297,39 @@ export const api = {
     if (!response.ok) throw new Error('Failed to mark notification as read');
     return response.json();
   },
+
+  async uploadImage(file: File): Promise<{ success: boolean; imageUrl: string }> {
+    console.log('🖼️ Uploading image...');
+    const url = `${API_BASE_URL}/api/upload/image`;
+    console.log('  - URL:', url);
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+    
+    try {
+      const response = await fetch(url, { 
+        method: 'POST',
+        headers,
+        body: formData
+      });
+      
+      console.log('  - Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('  - Success! Image URL:', result.imageUrl);
+      return result;
+    } catch (error) {
+      console.error('  - Upload error:', error);
+      throw error;
+    }
+  }
 };

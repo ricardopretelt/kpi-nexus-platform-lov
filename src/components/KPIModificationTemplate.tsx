@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Plus, Trash2, Code, Image, ArrowLeft } from 'lucide-react';
 import { KPI, KPIBlock, KPIVersion } from '../types/kpi';
 import { api, Topic } from '../services/api';
 import { toast } from 'sonner';
+import { AdditionalBlocks } from './AdditionalBlocks';
 
 interface KPIModificationTemplateProps {
   kpi: KPI;
@@ -31,11 +32,12 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
     changeDescription: ''
   });
   
-  const [additionalBlocks, setAdditionalBlocks] = useState<KPIBlock[]>(kpi.additionalBlocks || []);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [selectedEndContent, setSelectedEndContent] = useState('none');
+  const [endContentData, setEndContentData] = useState<any>({ text: '', images: [] });
 
   useEffect(() => {
     const loadData = async () => {
@@ -70,27 +72,6 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
     }));
   };
 
-  const addAdditionalBlock = () => {
-    const newBlock: KPIBlock = {
-      id: `block-${Date.now()}`,
-      title: '',
-      subtitle: '',
-      text: '',
-      endContent: 'none'
-    };
-    setAdditionalBlocks(prev => [...prev, newBlock]);
-  };
-
-  const removeAdditionalBlock = (blockId: string) => {
-    setAdditionalBlocks(prev => prev.filter(block => block.id !== blockId));
-  };
-
-  const updateAdditionalBlock = (blockId: string, field: keyof KPIBlock, value: string) => {
-    setAdditionalBlocks(prev => prev.map(block => 
-      block.id === blockId ? { ...block, [field]: value } : block
-    ));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -118,13 +99,13 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
 
     try {
       await api.updateKPI(kpi.id, {
-        // Remove name from the update payload since it's now immutable
         definition: formData.definition,
         sqlQuery: formData.sqlQuery,
         topics: formData.topics,
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
-        additionalBlocks: additionalBlocks,
+        // ✅ Use endContentData instead of additionalBlocks
+        additionalBlocks: selectedEndContent !== 'none' ? endContentData : undefined,
         changeDescription: formData.changeDescription
       });
 
@@ -145,7 +126,8 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
         topics: formData.topics,
-        additionalBlocks: additionalBlocks,
+        // ✅ Use endContentData instead of additionalBlocks
+        additionalBlocks: selectedEndContent !== 'none' ? endContentData : undefined,
         dataSpecialistId: dsUser?.id,
         businessSpecialistId: bsUser?.id
       };
@@ -157,7 +139,8 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
         topics: formData.topics,
         dataSpecialist: formData.dataSpecialist,
         businessSpecialist: formData.businessSpecialist,
-        additionalBlocks: additionalBlocks,
+        // ✅ Use endContentData instead of additionalBlocks
+        additionalBlocks: selectedEndContent !== 'none' ? endContentData : undefined,
         lastUpdated: new Date().toISOString(),
         versions: [...(kpi.versions || []), newVersion]
       };
@@ -344,137 +327,50 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
           </CardContent>
         </Card>
 
-        {/* Add Additional Block Button - inside the form */}
-        <Card>
-          <CardContent className="pt-6">
-            <Button
-              variant="outline"
-              onClick={addAdditionalBlock}
-              className="w-full"
-              type="button"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Additional Block
-            </Button>
-          </CardContent>
-        </Card>
+        {/* End Content Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            End Content
+          </label>
+          <select
+            value={selectedEndContent}
+            onChange={(e) => setSelectedEndContent(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="none">None</option>
+            <option value="text">Text</option>
+            <option value="image">Image</option>
+          </select>
+        </div>
 
-        {/* Additional Content Blocks - inside the form */}
-        {additionalBlocks.map((block, index) => (
-          <Card key={block.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center">
-                  <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-medium mr-2">Optional</span>
-                  Additional Block {index + 1}
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeAdditionalBlock(block.id)}
-                  type="button"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardDescription>
-                Custom content block for additional information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Title (optional)</Label>
-                <Input
-                  value={block.title || ''}
-                  onChange={(e) => updateAdditionalBlock(block.id, 'title', e.target.value)}
-                  placeholder="Block title..."
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label>Subtitle (optional)</Label>
-                <Input
-                  value={block.subtitle || ''}
-                  onChange={(e) => updateAdditionalBlock(block.id, 'subtitle', e.target.value)}
-                  placeholder="Block subtitle..."
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label>Text (optional)</Label>
-                <Textarea
-                  value={block.text || ''}
-                  onChange={(e) => updateAdditionalBlock(block.id, 'text', e.target.value)}
-                  placeholder="Block content..."
-                  className="mt-1 min-h-24"
-                />
-              </div>
-              
-              <div>
-                <Label>End Content</Label>
-                <Select
-                  value={block.endContent}
-                  onValueChange={(value: 'code' | 'image' | 'none') => 
-                    updateAdditionalBlock(block.id, 'endContent', value)
-                  }
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="code">Code</SelectItem>
-                    <SelectItem value="image">Image</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                {block.endContent === 'code' && (
-                  <div className="mt-2">
-                    <Label>Code Content</Label>
-                    <Textarea
-                      value={block.codeContent || ''}
-                      onChange={(e) => updateAdditionalBlock(block.id, 'codeContent', e.target.value)}
-                      placeholder="Enter code..."
-                      className="min-h-24 font-mono text-sm"
-                    />
-                  </div>
-                )}
-                
-                {block.endContent === 'image' && (
-                  <div className="mt-2">
-                    <Label>Image URL</Label>
-                    <Input
-                      value={block.imageUrl || ''}
-                      onChange={(e) => updateAdditionalBlock(block.id, 'imageUrl', e.target.value)}
-                      placeholder="Enter image URL..."
-                      className="mt-1"
-                    />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {/* Conditional Additional Blocks - BEFORE the submit button */}
+        {selectedEndContent === 'image' && (
+          <div className="mt-4">
+            <AdditionalBlocks
+              value={endContentData}
+              onChange={setEndContentData}
+              type="image"
+            />
+          </div>
+        )}
 
-        <Card>
-          <CardContent className="pt-6 space-y-3">
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Modifying...' : 'Modify KPI'}
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              className="w-full"
-              disabled={loading}
-              type="button"
-            >
-              Cancel
-            </Button>
-          </CardContent>
-        </Card>
+        {selectedEndContent === 'text' && (
+          <div className="mt-4">
+            <AdditionalBlocks
+              value={endContentData}
+              onChange={setEndContentData}
+              type="text"
+            />
+          </div>
+        )}
+
+        {/* Submit Button - LAST ELEMENT */}
+        <button
+          type="submit"
+          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700"
+        >
+          Update KPI
+        </button>
       </form>
     </div>
   );
