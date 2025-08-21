@@ -838,6 +838,18 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
       const currentActiveVersionId = currentActiveVersion.rows[0]?.kpi_version_id;
       console.log(`🔍 Current active version ID: ${currentActiveVersionId}`);
       
+      // Get the next version number
+      const versionResult = await client.query(`
+        SELECT COALESCE(MAX(version_number), 0) + 1 as next_version
+        FROM kpi_versions 
+        WHERE kpi_id = $1
+      `, [id]);
+      const newVersion = versionResult.rows[0].next_version;
+      console.log(`🔍 Next version number: ${newVersion}`);
+      
+      // Determine the status for the new version
+      const versionStatus = onlyCreatorAssigned ? 'active' : 'pending';
+      
       // DO NOT update KPI name - it's now immutable
       await client.query(`
         UPDATE kpis 
@@ -860,7 +872,7 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
         businessSpecialistId,
         versionStatus,
         additionalBlocks ? JSON.stringify(additionalBlocks) : null,
-        creatorId, // Add created_by
+        creatorId,
         changeDescription || 'Updated via API'
       ]);
       
@@ -869,9 +881,29 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
       
       if (onlyCreatorAssigned) {
         // Activate immediately and deactivate previous
-        const prev = await client.query('SELECT active_version FROM kpis WHERE id = $1', [id]);
-        const prevActiveId = prev.rows[0]?.active_version || null;
-        await client.query(`UPDATE kpis SET active_version = $1 WHERE id = $2`, [newVersionId, id]);
+        // ✅ FIXED: Use the new kpi_active_versions table instead of the old active_version field
+        const prevActive = await client.query(`
+          SELECT kpi_version_id 
+          FROM kpi_active_versions 
+          WHERE kpi_id = $1
+        `, [id]);
+        const prevActiveId = prevActive.rows[0]?.kpi_version_id || null;
+        
+        // Update the active version mapping
+        if (prevActiveId) {
+          await client.query(`
+            UPDATE kpi_active_versions 
+            SET kpi_version_id = $1 
+            WHERE kpi_id = $2
+          `, [newVersionId, id]);
+        } else {
+          await client.query(`
+            INSERT INTO kpi_active_versions (kpi_id, kpi_version_id, created_by)
+            VALUES ($1, $2, $3)
+          `, [id, newVersionId, creatorId]);
+        }
+        
+        // Set previous version to inactive
         if (prevActiveId && prevActiveId !== newVersionId) {
           await client.query(`UPDATE kpi_versions SET status = 'inactive' WHERE id = $1`, [prevActiveId]);
         }
@@ -922,32 +954,40 @@ app.put('/api/kpis/:id', authenticateToken, async (req, res) => {
         `, [newVersionId]);
         console.log(`🔍 Approval records created:`, approvalCheck.rows);
         
-        // CRITICAL: Verify that active_version was NOT changed
-        const finalActiveVersion = await client.query('SELECT active_version FROM kpis WHERE id = $1', [id]);
-        const finalActiveVersionId = finalActiveVersion.rows[0]?.active_version;
-        console.log(`🔍 Final active version ID: ${finalActiveVersionId}`);
-        
-        if (finalActiveVersionId !== currentActiveVersionId) {
-          console.log(`❌ ERROR: active_version was changed from ${currentActiveVersionId} to ${finalActiveVersionId} - this should NOT happen!`);
-        } else {
-          console.log(`✅ SUCCESS: active_version remained unchanged at ${currentActiveVersionId}`);
-        }
+        // ✅ SUCCESS: Return the updated KPI
+        res.json({ 
+          message: 'KPI updated successfully', 
+          kpi_id: id,
+          new_version_id: newVersionId,
+          status: 'pending_approval',
+          approvals_needed: approvers.size
+        });
+
       }
       
       await client.query('COMMIT');
       console.log(`✅ Transaction committed successfully for version ${newVersion}`);
       
-      res.json({ message: 'KPI updated successfully' });
+      // ❌ REMOVE: This duplicate response is causing the issue
+      // res.json({ 
+      //   message: 'KPI updated successfully', 
+      //   kpi_id: id,
+      //   new_version_id: new_version_id,
+      //   status: 'pending_approval',
+      //   approvals_needed: approvers.size
+      // });
+
     } catch (err) {
       await client.query('ROLLBACK');
       console.error(`❌ PUT /api/kpis/${id} failed:`, err);
-      throw err;
+      res.status(500).json({ error: 'Failed to update KPI', details: err.message });
     } finally {
       client.release();
     }
   } catch (err) {
+    // ✅ Add this outer catch block for function-level errors
     console.error(`❌ PUT /api/kpis/${id} failed:`, err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to update KPI', details: err.message });
   }
 });
 

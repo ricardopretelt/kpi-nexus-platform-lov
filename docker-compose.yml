@@ -15,8 +15,9 @@ services:
   # Backend API
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
+      target: backend  # New backend stage
     ports:
       - "3001:3001"
     environment:
@@ -35,7 +36,8 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: development  # Development stage for local dev
     ports:
       - "8080:8080"
     volumes:
@@ -43,7 +45,6 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      # No VITE_API_URL - let frontend auto-detect
     depends_on:
       - backend
     networks:

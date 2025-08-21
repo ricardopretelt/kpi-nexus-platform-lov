@@ -10,6 +10,15 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
+# Backend stage
+FROM base AS backend
+WORKDIR /app
+COPY backend/package*.json ./
+RUN npm ci
+COPY backend/ .
+EXPOSE 3001
+CMD ["npm", "start"]
+
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
@@ -19,16 +28,18 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production image, copy all the files and run the app
-FROM nginx:alpine AS runner
+# Development stage
+FROM base AS development
 WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+EXPOSE 8080
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8080"]
 
-# Copy the built application
+# Production stage
+FROM nginx:alpine AS production
+WORKDIR /app
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
-
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]
