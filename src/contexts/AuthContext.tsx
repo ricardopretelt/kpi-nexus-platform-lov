@@ -49,9 +49,9 @@ const API_BASE_URL = (() => {
       return 'http://localhost:3001';
     }
     
-    if (hostname === '18.217.206.5') {
+    if (hostname === '13.58.194.74') {
       console.log('AuthContext using server backend');
-      return 'http://18.217.206.5:3001';
+      return 'http://13.58.194.74:3001';
     }
   }
   

@@ -16,8 +16,8 @@ app.use(cors({
     'http://localhost:3000', 
     'http://localhost:5173',
     'http://frontend:8080',
-    'http://18.217.206.5:8080',
-    'http://18.217.206.5:3000'
+    'http://13.58.194.74:8080',
+    'http://13.58.194.74:3000'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Added PATCH method
