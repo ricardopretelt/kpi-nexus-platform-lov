@@ -14,18 +14,35 @@ interface HomePageProps {
   onTopicSelect: (topic: string) => void;
   onKPISelect: (kpi: KPI) => void;
   onAddKPI: () => void;
+  onReviewKPI: (kpiId: number) => void;
 }
 
-const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePageProps) => {
+const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI, onReviewKPI }: HomePageProps) => {
   const recentlyUpdatedKPIs = kpis
     .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
     .slice(0, 3);
 
   const getTopicStats = () => {
-    return topics.map(topic => ({
-      ...topic,
-      count: kpis.filter(kpi => kpi.topics && kpi.topics.includes(topic.id)).length
-    }));
+    console.log('🔍 Debug - Topics:', topics);
+    console.log('🔍 Debug - KPIs:', kpis);
+    
+    return topics.map(topic => {
+      const count = kpis.filter(kpi => {
+        console.log(`🔍 Debug - KPI ${kpi.name}:`, {
+          kpiTopics: kpi.topics,
+          topicId: topic.id,
+          includes: kpi.topics && kpi.topics.includes(topic.id)
+        });
+        return kpi.topics && kpi.topics.includes(topic.id);
+      }).length;
+      
+      console.log(`🔍 Debug - Topic ${topic.name}: count = ${count}`);
+      
+      return {
+        ...topic,
+        count
+      };
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -57,10 +74,7 @@ const HomePage = ({ kpis, topics, onTopicSelect, onKPISelect, onAddKPI }: HomePa
         
         {/* Add KPI Button - Top Right (opposite side of sidebar) */}
         <div className="flex items-center space-x-2">
-          <NotificationButton onReviewKPI={(kpiId) => {
-            const kpi = kpis.find(k => k.id === String(kpiId));
-            if (kpi) onKPISelect(kpi);
-          }} />
+          <NotificationButton onReviewKPI={onReviewKPI} />
           <Button onClick={onAddKPI} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="mr-2 h-4 w-4" />
             Add KPI

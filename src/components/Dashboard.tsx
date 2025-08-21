@@ -159,6 +159,24 @@ const Dashboard = () => {
     setCurrentPage('create-topic');
   };
 
+  // Add this new function to handle KPI review from notifications
+  const handleReviewKPI = async (kpiId: number) => {
+    try {
+      // Fetch the KPI from the API
+      const kpi = await api.getKPI(String(kpiId));
+      if (kpi) {
+        setSelectedKPI(kpi);
+        setCurrentPage('kpi');
+      } else {
+        console.error('KPI not found:', kpiId);
+        toast.error('KPI not found');
+      }
+    } catch (error) {
+      console.error('Failed to fetch KPI for review:', error);
+      toast.error('Failed to load KPI for review');
+    }
+  };
+
   const handleTopicCreationSuccess = (newTopic: Topic) => {
     // Add the new topic to the list
     setTopics(prev => [newTopic, ...prev]);
@@ -195,6 +213,7 @@ const Dashboard = () => {
             onTopicSelect={handleTopicSelect} 
             onKPISelect={handleKPISelect}
             onAddKPI={handleAddKPI}
+            onReviewKPI={handleReviewKPI}
           />
         )}
         {currentPage === 'topics' && !selectedTopic && (
