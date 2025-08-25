@@ -89,13 +89,13 @@ KPI Nexus Platform addresses the critical need for centralized, version-controll
 4. **Environment Configuration**
    Create a `.env` file in the backend directory:
    ```env
-   PORT=3001
+   PORT=
    JWT_SECRET=
    DB_HOST=
    DB_USER=
    DB_PASSWORD=
    DB_NAME=
-   DB_PORT=5432
+   DB_PORT=
    ```
 
 ### Database Setup
@@ -119,9 +119,9 @@ docker-compose up -d
 ```
 
 This will start:
-- PostgreSQL database on port 5432
-- Backend API on port 3001
-- Frontend development server on port 8080
+- PostgreSQL database 
+- Backend API 
+- Frontend development server 
 
 ## 🚀 Usage/How to Run
 
@@ -139,8 +139,8 @@ This will start:
    ```
 
 3. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:3001
+   - Frontend: http://localhost:frontend_port
+   - Backend API: http://localhost:backend_port
 
 ### Production Build
 
@@ -526,9 +526,6 @@ npm run test:e2e
 # Production build
 docker-compose -f docker-compose.prod.yml up -d
 
-# Or build and run manually
-docker build -t kpi-nexus .
-docker run -p 3001:3001 -p 8080:8080 kpi-nexus
 ```
 
 ### Hosting Recommendations
@@ -543,13 +540,13 @@ docker run -p 3001:3001 -p 8080:8080 kpi-nexus
 ```env
 # Production
 NODE_ENV=production
-PORT=3001
+PORT=
 JWT_SECRET=
 DB_HOST=
 DB_USER=
 DB_PASSWORD=
 DB_NAME=
-DB_PORT=5432
+DB_PORT=
 CORS_ORIGIN=
 ```
 
