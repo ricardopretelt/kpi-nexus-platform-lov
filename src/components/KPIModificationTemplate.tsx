@@ -11,6 +11,7 @@ import { Plus, Trash2, Code, Image, ArrowLeft } from 'lucide-react';
 import { KPI, KPIBlock, KPIVersion } from '../types/kpi';
 import { api, Topic } from '../services/api';
 import { toast } from 'sonner';
+import { ImageUpload } from './ImageUpload';
 
 interface KPIModificationTemplateProps {
   kpi: KPI;
@@ -444,12 +445,10 @@ const KPIModificationTemplate = ({ kpi, onCancel, onSuccess }: KPIModificationTe
                 
                 {block.endContent === 'image' && (
                   <div className="mt-2">
-                    <Label>Image URL</Label>
-                    <Input
-                      value={block.imageUrl || ''}
-                      onChange={(e) => updateAdditionalBlock(block.id, 'imageUrl', e.target.value)}
-                      placeholder="Enter image URL..."
-                      className="mt-1"
+                    <ImageUpload
+                      value={block.imageUrl}
+                      onChange={(value) => updateAdditionalBlock(block.id, 'imageUrl', value)}
+                      onRemove={() => updateAdditionalBlock(block.id, 'imageUrl', '')}
                     />
                   </div>
                 )}

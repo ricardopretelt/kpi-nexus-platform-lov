@@ -16,6 +16,10 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci
 COPY backend/ .
+
+# Create uploads directory
+RUN mkdir -p uploads/kpi-images
+
 EXPOSE 3001
 CMD ["npm", "start"]
 

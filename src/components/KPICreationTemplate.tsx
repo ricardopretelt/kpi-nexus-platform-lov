@@ -13,6 +13,7 @@ import { KPI, KPIBlock } from '../types/kpi';
 import { api, Topic } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ImageUpload } from './ImageUpload';
 
 interface KPICreationTemplateProps {
   onCancel: () => void;
@@ -479,12 +480,10 @@ const KPICreationTemplate = ({ onCancel, onSuccess }: KPICreationTemplateProps) 
                   
                   {block.endContent === 'image' && (
                     <div className="mt-2">
-                      <Label>Image URL</Label>
-                      <Input
-                        value={block.imageUrl || ''}
-                        onChange={(e) => updateAdditionalBlock(block.id, 'imageUrl', e.target.value)}
-                        placeholder="Enter image URL..."
-                        className="mt-1"
+                      <ImageUpload
+                        value={block.imageUrl}
+                        onChange={(value) => updateAdditionalBlock(block.id, 'imageUrl', value)}
+                        onRemove={() => updateAdditionalBlock(block.id, 'imageUrl', '')}
                       />
                     </div>
                   )}

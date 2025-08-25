@@ -295,4 +295,29 @@ export const api = {
     if (!response.ok) throw new Error('Failed to mark notification as read');
     return response.json();
   },
+
+  // Add new image upload method
+  async uploadKpiImage(file: File): Promise<{ success: boolean; filePath: string; filename: string; originalName: string; size: number }> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const token = localStorage.getItem('authToken');
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/kpi/upload-image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to upload image');
+    }
+
+    return response.json();
+  },
 };
