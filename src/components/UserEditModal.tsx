@@ -174,7 +174,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
       return 'http://localhost:3001';
     }
     
-    if (hostname === '13.58.194.74' || hostname.includes('ip-')) {
+    if (hostname === '18.218.115.23' || hostname.includes('ip-')) {
       return `http://${hostname}:3001`;
     }
     

@@ -42,8 +42,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ value, onChange, onRem
       if (result.filePath.startsWith('/uploads/')) {
         const hostname = window.location.hostname;
         let baseUrl = 'http://localhost:3001';
-        if (hostname === '13.58.194.74') {
-          baseUrl = 'http://13.58.194.74:3001';
+        if (hostname === '18.218.115.23') {
+          baseUrl = 'http://18.218.115.23:3001';
         }
         setPreview(`${baseUrl}${result.filePath}`);
       } else {
