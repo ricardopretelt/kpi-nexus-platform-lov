@@ -3,7 +3,14 @@ import { KPI, KPIBlock } from '../types/kpi';
 
 const API_BASE_URL = (() => {
   console.log('🔍 Environment check:');
+  console.log('- VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
   console.log('- window.location.hostname:', window?.location?.hostname);
+  
+  // Use environment variable if available
+  if (import.meta.env.VITE_API_BASE_URL) {
+    console.log('Using VITE_API_BASE_URL from environment');
+    return import.meta.env.VITE_API_BASE_URL;
+  }
   
   // Auto-detect based on how the frontend is accessed
   if (typeof window !== 'undefined') {
