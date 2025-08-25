@@ -493,19 +493,6 @@ npm test
 npm run test:e2e
 ```
 
-### Testing Frameworks
-
-- **Unit Testing**: Jest (planned)
-- **Component Testing**: React Testing Library (planned)
-- **E2E Testing**: Playwright (planned)
-- **API Testing**: Supertest (planned)
-
-### Test Coverage
-
-- **Target Coverage**: 80%+ for critical business logic
-- **Coverage Areas**: Components, services, utilities, API endpoints
-- **Testing Strategy**: Unit tests for business logic, integration tests for API, E2E tests for user workflows
-
 ## 🚀 Deployment
 
 ### Production Deployment
