@@ -3,9 +3,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: kpi_nexus
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${DB_NAME:-kpi_nexus_prod_v2}
+      POSTGRES_USER: ${DB_USER:-kpi_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-new_secure_password_2024_xyz}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -19,14 +19,18 @@ services:
       dockerfile: Dockerfile
       target: backend
     ports:
-      - "3001:3001"
+      - "${PORT:-3001}:3001"
     environment:
       - DB_HOST=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=kpi_nexus
+      - DB_USER=${DB_USER:-kpi_user}
+      - DB_PASSWORD=${DB_PASSWORD:-new_secure_password_2024_xyz}
+      - DB_NAME=${DB_NAME:-kpi_nexus_prod_v2}
       - DB_PORT=5432
-      - JWT_SECRET=your-secret-key-change-in-production
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=${NODE_ENV:-development}
+      - UPLOAD_PATH=${UPLOAD_PATH:-./uploads}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-5242880}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080,http://localhost:3000,http://localhost:5173,http://frontend:8080}
     volumes:
       - ./uploads:/app/uploads
     depends_on:
@@ -39,14 +43,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development  # Development stage for local dev
+      target: development
     ports:
-      - "8080:8080"
+      - "${FRONTEND_PORT:-8080}:8080"
     volumes:
       - .:/app
       - /app/node_modules
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       - backend
     networks:

@@ -6,14 +6,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { hashPassword, verifyPassword } = require('./consistent-hash');
-require('dotenv').config();
+const config = require('./config');
 
 const app = express();
-const port = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const port = config.server.port;
+const JWT_SECRET = config.auth.jwtSecret;
 
 // Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = path.join(__dirname, config.uploads.path);
 const kpiImagesDir = path.join(uploadsDir, 'kpi-images');
 
 if (!fs.existsSync(uploadsDir)) {
@@ -29,7 +29,6 @@ const storage = multer.diskStorage({
     cb(null, kpiImagesDir);
   },
   filename: function (req, file, cb) {
-    // Generate unique filename: timestamp_randomString_originalName
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const originalName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -40,10 +39,9 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: config.uploads.maxFileSize,
   },
   fileFilter: function (req, file, cb) {
-    // Check file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -53,18 +51,11 @@ const upload = multer({
   }
 });
 
-// Enhanced CORS configuration
+// Enhanced CORS configuration using config
 app.use(cors({
-  origin: [
-    'http://localhost:8080',
-    'http://localhost:3000', 
-    'http://localhost:5173',
-    'http://frontend:8080',
-    'http://18.218.115.23:8080',
-    'http://18.218.115.23:3000'
-  ],
+  origin: config.cors.origins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Added PATCH method
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -98,13 +89,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database connection
+// Database connection using config
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'kpi_nexus',
-  password: process.env.DB_PASSWORD || 'password',
-  port: process.env.DB_PORT || 5432,
+  user: config.database.user,
+  host: config.database.host,
+  database: config.database.name,
+  password: config.database.password,
+  port: config.database.port,
 });
 
 // Authentication middleware
