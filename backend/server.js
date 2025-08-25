@@ -2,12 +2,56 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { hashPassword, verifyPassword } = require('./consistent-hash');
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+const kpiImagesDir = path.join(uploadsDir, 'kpi-images');
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(kpiImagesDir)) {
+  fs.mkdirSync(kpiImagesDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, kpiImagesDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename: timestamp_randomString_originalName
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const originalName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    cb(null, `${timestamp}_${randomString}_${originalName}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only jpg, jpeg, png, gif, and webp files are allowed.'), false);
+    }
+  }
+});
 
 // Enhanced CORS configuration
 app.use(cors({
@@ -25,6 +69,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Enhanced debugging middleware
 app.use((req, res, next) => {
@@ -1285,6 +1332,49 @@ app.get('/api/pending-approvals', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Pending approvals fetch error', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add new file upload endpoint
+app.post('/api/kpi/upload-image', authenticateToken, async (req, res) => {
+  try {
+    // Use multer 2.x promise-based approach
+    const uploadMiddleware = upload.single('image');
+    
+    uploadMiddleware(req, res, async (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+          }
+          return res.status(400).json({ error: 'File upload error' });
+        }
+        
+        if (err.message && err.message.includes('Invalid file type')) {
+          return res.status(400).json({ error: err.message });
+        }
+        
+        return res.status(400).json({ error: 'File upload failed' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
+      }
+
+      // Return the relative path that will be stored in the database
+      const relativePath = `/uploads/kpi-images/${req.file.filename}`;
+      
+      res.json({
+        success: true,
+        filePath: relativePath,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      });
+    });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
   }
 });
 
